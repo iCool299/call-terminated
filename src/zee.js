@@ -1,10 +1,23 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
 import { CONFIG } from './config.js';
-import { frameAt, drawAnim } from './assets.js';
+import { frameAt, drawAnim, silhouette } from './assets.js';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
+
+// A soft round shadow blob, drawn once and reused for Zee's contact shadow and the paper shadows (no per-frame gradients).
+const SOFT = (() => {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(0,0,0,0.85)'); r.addColorStop(0.55, 'rgba(0,0,0,0.38)'); r.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+  return c;
+})();
+const TRAIL_LAGS = [2, 4, 6];            // history samples (60 per second) used for the motion-blur ghosts
+const TRAIL_ALPHA = [0.2, 0.11, 0.05];
+const SMEAR_TIME = 0.07;                 // seconds the previous frame lingers as a smear on swings / rolls
+const SMEAR_STATES = new Set(['attack', 'dodge']);
 
 export class Zee {
   constructor(character, x, y) {
@@ -17,6 +30,9 @@ export class Zee {
     this.cd = { special: 0, dodge: 0 };
     this.papers = [];             // Printout Barrage projectiles
     this.barrageFrame = -1;
+    this.blur = 0;                // 0..1 motion-blur strength, follows her real speed
+    this.trail = [];              // recent positions (newest first) for the blur ghosts
+    this._trailT = 0; this._key = ''; this.smear = null;
     this.state = 'idle';
     this.idleTime = 0;
     this.queued = false;
@@ -43,7 +59,7 @@ export class Zee {
     }
   }
   _updatePapers(dt) {
-    for (const p of this.papers) { p.t += dt; p.x += p.vx * dt; p.z += p.vz * dt; p.spin += dt * 14; }
+    for (const p of this.papers) { p.t += dt; p.x += p.vx * dt; p.vz -= 55 * dt; p.z = Math.max(4, p.z + p.vz * dt); p.spin += dt * 14; }
     this.papers = this.papers.filter((p) => p.t < C.barrage.life && p.x > -20 && p.x < CONFIG.view.w + 20);
   }
 
@@ -71,6 +87,25 @@ export class Zee {
       case 'interact': if (this.done) this._enter('idle'); break;
     }
     this._clamp(bounds);
+    this._visuals(dt);
+  }
+
+  // Motion-blur bookkeeping: blur strength from real speed, a short position history, and the previous frame for smears.
+  _visuals(dt) {
+    if (this.px !== undefined) {
+      const v = Math.hypot(this.x - this.px, this.y - this.py) / dt;
+      const target = Math.min(1, Math.max(0, (v - 70) / 150));
+      this.blur += (target - this.blur) * Math.min(1, dt * 18);
+    }
+    this._trailT += dt;
+    if (this._trailT >= 1 / 60) {
+      this._trailT -= 1 / 60;
+      this.trail.unshift({ x: this.x, y: this.y, lift: Math.max(0, this.z), anim: this.anim, frame: this.frame, face: this.face });
+      if (this.trail.length > 7) this.trail.pop();
+    }
+    const key = this.animName + ':' + this.frame;
+    if (key !== this._key) { if (this._ka) this.smear = { anim: this._ka, frame: this._kf, t: 0 }; this._key = key; this._ka = this.anim; this._kf = this.frame; }
+    if (this.smear) this.smear.t += dt;
   }
 
   _viewer() {
@@ -247,9 +282,19 @@ export class Zee {
     const x = this.px + (this.x - this.px) * alpha;
     const y = this.py + (this.y - this.py) * alpha;
     const lift = Math.max(0, this.pz + (this.z - this.pz) * alpha);
-    // ground shadow shrinks and fades as she rises
-    ctx.fillStyle = `rgba(0,0,0,${Math.max(0.12, 0.32 - lift * 0.003)})`;
-    ctx.beginPath(); ctx.ellipse(x, y + 1, 26 - lift * 0.12, 6 - lift * 0.03, 0, 0, Math.PI * 2); ctx.fill();
+    this._drawShadow(ctx, x, y, lift);
+    // motion blur: faint ghosts along her recent path while she moves fast
+    if (this.blur > 0.06) {
+      for (let i = 0; i < TRAIL_LAGS.length; i++) {
+        const h = this.trail[TRAIL_LAGS[i]];
+        if (h) drawAnim(ctx, this.character, h.anim, h.frame, h.x, h.y - h.lift, h.face, TRAIL_ALPHA[i] * this.blur);
+      }
+    }
+    // swing / roll smear: the previous frame lingers for a moment, which blurs fast poses together
+    const s = this.smear;
+    if (s && s.t < SMEAR_TIME && (SMEAR_STATES.has(this.state) || this.animName === 'jump_kick')) {
+      drawAnim(ctx, this.character, s.anim, s.frame, x, y - lift, this.face, 0.32 * (1 - s.t / SMEAR_TIME));
+    }
     // flicker while invulnerable after a hit
     if (!(this.invuln > 0 && this.state !== 'dodge' && Math.floor(this.invuln * 18) % 2 === 0)) {
       drawAnim(ctx, this.character, this.anim, this.frame, x, y - lift, this.face);
@@ -257,16 +302,42 @@ export class Zee {
     this._drawPapers(ctx);
   }
 
+  // Soft contact shadow + a cast shadow built from her own silhouette (so it follows every pose), both fading as she rises.
+  _drawShadow(ctx, x, y, lift) {
+    const fade = Math.max(0.3, 1 - lift / 170);
+    const lying = this.state === 'down' || this.state === 'getup' || this.state === 'defeat';
+    const w = (lying ? 46 : 27) * (1 - Math.min(0.4, lift / 300));
+    ctx.globalAlpha = 0.55 * fade;
+    ctx.drawImage(SOFT, x - w, y - w * 0.26 + 1, w * 2, w * 0.52);
+    const ch = this.character, dw = ch.cw * ch.scale, dh = ch.ch * ch.scale;
+    ctx.save();
+    ctx.translate(x, y); ctx.transform(1, 0, -0.5, 0.3, 0, 0); ctx.scale(this.face, 1);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.globalAlpha = 0.22 * fade;
+    ctx.drawImage(silhouette(ch, this.anim, this.frame), -ch.anchor.x * ch.scale, -ch.anchor.y * ch.scale, dw, dh);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   _drawPapers(ctx) {
     for (const p of this.papers) {
       const fade = Math.min(1, (C.barrage.life - p.t) * 5);
-      ctx.save();
-      ctx.globalAlpha = fade;
-      ctx.translate(p.x, p.y - p.z); ctx.rotate(Math.sin(p.spin) * 0.5);
-      ctx.fillStyle = '#10101a'; ctx.fillRect(-6, -4, 12, 9);              // outline
-      ctx.fillStyle = '#f4f1ea'; ctx.fillRect(-5, -3, 10, 7);              // sheet
-      ctx.fillStyle = '#9aa0b4'; ctx.fillRect(-3, -1, 6, 1); ctx.fillRect(-3, 1, 5, 1);   // text lines
-      ctx.restore();
+      // shadow on the floor under the flying sheet: shrinks and fades the higher it is
+      const hs = Math.max(0, 1 - p.z / 170);
+      ctx.globalAlpha = 0.5 * fade * hs;
+      ctx.drawImage(SOFT, p.x - 9, p.y - 2.5, 18, 5);
+      const dir = Math.sign(p.vx);
+      // motion-blur streak behind the sheet
+      for (let i = 2; i >= 0; i--) {
+        ctx.save();
+        ctx.globalAlpha = fade * (i === 0 ? 1 : 0.2 / i);
+        ctx.translate(p.x - dir * i * 6, p.y - p.z); ctx.rotate(Math.sin(p.spin) * 0.5);
+        ctx.fillStyle = '#10101a'; ctx.fillRect(-6, -4, 12, 9);              // outline
+        ctx.fillStyle = '#f4f1ea'; ctx.fillRect(-5, -3, 10, 7);              // sheet
+        if (i === 0) { ctx.fillStyle = '#9aa0b4'; ctx.fillRect(-3, -1, 6, 1); ctx.fillRect(-3, 1, 5, 1); }  // text lines
+        ctx.restore();
+      }
     }
+    ctx.globalAlpha = 1;
   }
 }

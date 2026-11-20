@@ -27,10 +27,15 @@ namespace Zee2
 
     public static class Pipe
     {
-        public const int CELL = 224;
-        public const int ANCHOR_X = 112;
-        public const int BASE_Y = 204;
-        public const double TARGET_STAND = 132.0;
+        // Frames are built at 2x the game's 132 px character height so the game can draw them at your screen's real
+        // resolution without blur or blockiness (drawScale 0.5 in the manifest brings them back to game units).
+        public const int CW = 384;          // cell width (wide: kicks, thrown paper and lying poses need sideways room)
+        public const int CH = 320;          // cell height
+        public const int CELL = CH;         // legacy name, used by the (unused) debug sheet only
+        public const int ANCHOR_X = 192;
+        public const int BASE_Y = 296;
+        public const double TARGET_STAND = 264.0;
+        public const int MAX_COLS = 8;      // strips are packed in grids at most 8 frames wide (phone GPUs limit texture width)
         public static bool Nearest = false;
 
         public class Src { public int W; public int H; public int[] P; }
@@ -180,10 +185,10 @@ namespace Zee2
             for (int k = 0; k < n; k++)
             {
                 o.Frames[k] = Resample(s, frameOf, k, legCx[k], rowBase[k / perRow], scale);
-                int dMinX = CELL, dMaxX = -1, dMinY = CELL;
-                for (int y = 0; y < CELL; y++) for (int x = 0; x < CELL; x++)
-                        if ((o.Frames[k][y * CELL + x] >> 24) != 0) { if (x < dMinX) dMinX = x; if (x > dMaxX) dMaxX = x; if (y < dMinY) dMinY = y; }
-                if (dMinX <= 0 || dMaxX >= CELL - 1 || dMinY <= 0)
+                int dMinX = CW, dMaxX = -1, dMinY = CH;
+                for (int y = 0; y < CH; y++) for (int x = 0; x < CW; x++)
+                        if ((o.Frames[k][y * CW + x] >> 24) != 0) { if (x < dMinX) dMinX = x; if (x > dMaxX) dMaxX = x; if (y < dMinY) dMinY = y; }
+                if (dMinX <= 0 || dMaxX >= CW - 1 || dMinY <= 0)
                     log.AppendLine(string.Format("  WARNING f{0} touches the cell edge: x[{1}-{2}] top={3}", k, dMinX, dMaxX, dMinY));
             }
             return o;
@@ -192,13 +197,13 @@ namespace Zee2
         static int[] Resample(Src s, int[] frameOf, int f, double ax, double by, double sc)
         {
             int W = s.W, H = s.H;
-            int[] outp = new int[CELL * CELL];
+            int[] outp = new int[CW * CH];
             double inv = 1.0 / sc;
-            for (int Y = 0; Y < CELL; Y++)
+            for (int Y = 0; Y < CH; Y++)
             {
                 double sy0 = by + (Y - BASE_Y) * inv, sy1 = by + (Y + 1 - BASE_Y) * inv;
                 int y0 = (int)Math.Floor(sy0), y1 = (int)Math.Ceiling(sy1) - 1;
-                for (int X = 0; X < CELL; X++)
+                for (int X = 0; X < CW; X++)
                 {
                     double sx0 = ax + (X - ANCHOR_X) * inv, sx1 = ax + (X + 1 - ANCHOR_X) * inv;
                     int x0 = (int)Math.Floor(sx0), x1 = (int)Math.Ceiling(sx1) - 1;
@@ -219,7 +224,7 @@ namespace Zee2
                     if (tw > 0 && aw / tw >= 0.45)
                     {
                         int R = (int)Math.Round(r / aw), G = (int)Math.Round(g / aw), B = (int)Math.Round(b / aw);
-                        outp[Y * CELL + X] = unchecked((int)0xFF000000) | (R << 16) | (G << 8) | B;
+                        outp[Y * CW + X] = unchecked((int)0xFF000000) | (R << 16) | (G << 8) | B;
                     }
                 }
             }
@@ -294,14 +299,19 @@ namespace Zee2
         public static void SaveStrip(SheetOut o, string path)
         {
             int n = o.Frames.Length;
-            using (Bitmap bmp = new Bitmap(CELL * n, CELL, PixelFormat.Format32bppArgb))
+            int cols = Math.Min(n, MAX_COLS), rows = (n + cols - 1) / cols;
+            int W = CW * cols, H = CH * rows;
+            using (Bitmap bmp = new Bitmap(W, H, PixelFormat.Format32bppArgb))
             {
-                int[] buf = new int[CELL * n * CELL];
+                int[] buf = new int[W * H];
                 for (int k = 0; k < n; k++)
-                    for (int y = 0; y < CELL; y++)
-                        for (int x = 0; x < CELL; x++)
-                            buf[y * CELL * n + k * CELL + x] = o.Frames[k][y * CELL + x];
-                BitmapData bd = bmp.LockBits(new Rectangle(0, 0, CELL * n, CELL), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+                {
+                    int gx = (k % cols) * CW, gy = (k / cols) * CH;
+                    for (int y = 0; y < CH; y++)
+                        for (int x = 0; x < CW; x++)
+                            buf[(gy + y) * W + gx + x] = o.Frames[k][y * CW + x];
+                }
+                BitmapData bd = bmp.LockBits(new Rectangle(0, 0, W, H), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
                 Marshal.Copy(buf, 0, bd.Scan0, buf.Length);
                 bmp.UnlockBits(bd);
                 bmp.Save(path, ImageFormat.Png);

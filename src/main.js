@@ -155,7 +155,7 @@ function frame(now) {
 
 (async function boot() {
   try {
-    character = await loadCharacter('assets/characters/zee_v2/');
+    character = await loadCharacter('assets/characters/zee/');
     zee = new Zee(character, W / 2, 292);
     buildViewer();
     $('loading').remove();

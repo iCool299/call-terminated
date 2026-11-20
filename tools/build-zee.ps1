@@ -22,12 +22,12 @@ $out = Join-Path $root "assets\characters\$outName"
 $dbg = Join-Path $root 'tools\debug'
 New-Item -ItemType Directory -Force $dbg | Out-Null
 New-Item -ItemType Directory -Force $out | Out-Null
-$log = [Zee2.Pipe]::Run($root, $master, $out, (Join-Path $dbg "zee-sheet$Suffix.png"), $sheets, 28, $extras)
+$log = [Zee2.Pipe]::Run($root, $master, $out, '', $sheets, 56, $extras)     # 56-colour palette keeps the shading; no debug sheet (it would be huge at 2x)
 $log | Out-File (Join-Path $dbg "zee-build$Suffix.log") -Encoding utf8
 
 # Manifest
 $strips = [ordered]@{}
-foreach ($s in $sheets) { $strips[$s.Name] = [ordered]@{ file = "zee_$($s.Name).png"; frames = $s.N } }
+foreach ($s in $sheets) { $strips[$s.Name] = [ordered]@{ file = "zee_$($s.Name).png"; frames = $s.N; cols = [Math]::Min($s.N, [Zee2.Pipe]::MAX_COLS) } }
 $animTable = [ordered]@{}
 foreach ($a in $anims) {
     $e = [ordered]@{ strip = $a.strip; from = $a.from; to = $a.to; fps = $a.fps; loop = [bool]$a.loop }
@@ -38,8 +38,9 @@ foreach ($a in $anims) {
 }
 $manifest = [ordered]@{
     character = 'zee'
-    cell      = [ordered]@{ w = [Zee2.Pipe]::CELL; h = [Zee2.Pipe]::CELL }
+    cell      = [ordered]@{ w = [Zee2.Pipe]::CW; h = [Zee2.Pipe]::CH }
     anchor    = [ordered]@{ x = [Zee2.Pipe]::ANCHOR_X; y = [Zee2.Pipe]::BASE_Y }
+    drawScale = 132.0 / [Zee2.Pipe]::TARGET_STAND     # game units per sprite pixel (frames are built at 2x)
     standingHeightPx = [int][Zee2.Pipe]::TARGET_STAND
     facing    = 'right'
     strips    = $strips
