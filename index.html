@@ -31,10 +31,11 @@
   #touch { display:none; position:fixed; inset:0; z-index:4; pointer-events:none; }
   body.touch #touch { display:block; }
   #stick-zone { position:absolute; left:0; top:0; width:50%; height:100%; pointer-events:auto; touch-action:none; }
-  #stick { position:fixed; width:112px; height:112px; margin:-56px 0 0 -56px; border-radius:50%; background:#ffffff14; border:2px solid #ffffff44; opacity:0; transition:opacity .12s; pointer-events:none; left:calc(70px + var(--safe-l)); top:75%; }
-  #stick.on { opacity:1; }
+  /* fixed joystick: always in the same place (bottom-left); touching anywhere on the left side drives it */
+  #stick { position:fixed; width:112px; height:112px; border-radius:50%; background:#ffffff14; border:2px solid #ffffff55; opacity:.6; transition:opacity .12s; pointer-events:none; left:calc(26px + var(--safe-l)); bottom:calc(26px + var(--safe-b)); }
+  #stick.on { opacity:1; background:#ffffff22; }
   #stick-knob { position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px; border-radius:50%; background:#ffffff55; border:2px solid #ffffffaa; }
-  #stick-hint { position:absolute; left:calc(28px + var(--safe-l)); bottom:calc(30px + var(--safe-b)); width:96px; height:96px; border-radius:50%; border:2px dashed #ffffff30; display:grid; place-items:center; color:#ffffff55; font-size:11px; pointer-events:none; }
+  #stick-hint { display:none; position:absolute; left:calc(28px + var(--safe-l)); bottom:calc(30px + var(--safe-b)); width:96px; height:96px; border-radius:50%; border:2px dashed #ffffff30; display:grid; place-items:center; color:#ffffff55; font-size:11px; pointer-events:none; }
   #pad { position:absolute; right:calc(8px + var(--safe-r)); bottom:calc(6px + var(--safe-b)); width:250px; height:230px; pointer-events:none; }
   #pad button { position:absolute; border-radius:50%; border:2px solid #ffffff66; background:#22203acc; color:#fff; font:700 12px system-ui; letter-spacing:.04em; pointer-events:auto; touch-action:none; overflow:hidden; }
   #pad button.down { background:#ff8a5ccc; transform:scale(.94); }
@@ -102,7 +103,7 @@
 <div id="rotate"><div><h2>Rotate your phone</h2><p style="color:var(--mute)">This game plays in landscape.</p></div></div>
 <div id="loading">Loading Zee...</div>
 
-<script type="module" src="src/main.js?v=202611201944"></script>
+<script type="module" src="src/main.js?v=202611201956"></script>
 </body>
 </html>
 

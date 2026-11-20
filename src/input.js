@@ -1,6 +1,6 @@
 // Unified input: keyboard on PC/laptop, floating joystick + buttons on touch devices.
 // The game only reads: input.axis (x,y in -1..1), input.run, and input.consume() (one-shot actions).
-import { CONFIG } from './config.js?v=202611201944';
+import { CONFIG } from './config.js?v=202611201956';
 
 export class Input {
   constructor(root = document) {
@@ -80,9 +80,10 @@ export class Input {
     zone.addEventListener('pointerdown', (e) => {
       if (stickId !== null) return;
       this.lastDevice = 'touch';
-      stickId = e.pointerId; origin = { x: e.clientX, y: e.clientY };
+      // the joystick never moves: its centre is always the fixed base, wherever on the left side the thumb lands
+      const r = stick.getBoundingClientRect();
+      stickId = e.pointerId; origin = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
       try { zone.setPointerCapture(e.pointerId); } catch (_) { /* synthetic or already-released pointer */ }
-      stick.style.left = origin.x + 'px'; stick.style.top = origin.y + 'px';
       stick.classList.add('on'); update(e); e.preventDefault();
     });
     zone.addEventListener('pointermove', (e) => { if (e.pointerId === stickId) { update(e); e.preventDefault(); } });

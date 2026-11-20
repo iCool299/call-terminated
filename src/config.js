@@ -5,8 +5,8 @@ export const CONFIG = {
 
   zee: {
     maxHp: 100,
-    walkSpeed: 110,                    // px/sec (game is 640 wide, so a walk crosses the screen in ~6 s)
-    runSpeed: 220,
+    walkSpeed: 130,                    // px/sec (game is 640 wide, so a walk crosses the screen in ~5 s)
+    runSpeed: 260,
     depthSpeedFactor: 0.62,            // vertical (depth) movement is slower than sideways
     runThreshold: 0.82,                // touch joystick push needed to run
     jumpStartTime: 0.10,              // crouch before leaving the ground

@@ -117,7 +117,7 @@
                                     "strip":  "walk",
                                     "from":  0,
                                     "to":  11,
-                                    "fps":  16,
+                                    "fps":  12,
                                     "loop":  true
                                 },
                        "run":  {
