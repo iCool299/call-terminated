@@ -1,8 +1,8 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js';
-import { loadCharacter } from './assets.js';
-import { Input } from './input.js';
-import { Zee } from './zee.js';
+import { CONFIG } from './config.js?v=202611201942';
+import { loadCharacter, VERSION } from './assets.js?v=202611201942';
+import { Input } from './input.js?v=202611201942';
+import { Zee } from './zee.js?v=202611201942';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -148,7 +148,7 @@ function frame(now) {
   ctx.drawImage(bg, 0, 0);
   ctx.setTransform(k, 0, 0, k, 0, 0);
   zee.draw(ctx, paused ? 1 : acc / STEP); drawHud(); updateButtons();
-  const text = `${zee.viewer ? 'viewer' : zee.state} | ${zee.animName} ${zee.frame + 1}/${zee.anim.frames}`;
+  const text = `${zee.viewer ? 'viewer' : zee.state} | ${zee.animName} ${zee.frame + 1}/${zee.anim.frames} | v${VERSION}`;
   if (text !== readoutText) { readoutText = text; $('readout').textContent = text; }
   requestAnimationFrame(frame);
 }

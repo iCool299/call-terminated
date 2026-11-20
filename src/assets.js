@@ -1,18 +1,22 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js';
+import { CONFIG } from './config.js?v=202611201942';
+
+// Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
+export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
+const stamp = (u) => u + '?v=' + VERSION;
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('Failed to load ' + src));
-    img.src = src;
+    img.src = stamp(src);
   });
 }
 
 export async function loadCharacter(baseUrl) {
-  const text = await (await fetch(baseUrl + 'zee.manifest.json')).text();
+  const text = await (await fetch(stamp(baseUrl + 'zee.manifest.json'))).text();
   const manifest = JSON.parse(text.replace(/^﻿/, ''));
   const images = {};
   await Promise.all(Object.entries(manifest.strips).map(async ([name, s]) => {
