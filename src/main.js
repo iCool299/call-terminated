@@ -1,8 +1,8 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611202042';
-import { loadCharacter, VERSION } from './assets.js?v=202611202042';
-import { Input } from './input.js?v=202611202042';
-import { Zee } from './zee.js?v=202611202042';
+import { CONFIG } from './config.js?v=202611202048';
+import { loadCharacter, VERSION } from './assets.js?v=202611202048';
+import { Input } from './input.js?v=202611202048';
+import { Zee } from './zee.js?v=202611202048';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -30,6 +30,7 @@ function resize() {
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const cw = Math.max(W, Math.min(1920, Math.round(cssW * dpr)));
   k = cw / W;
+  if (character) character.px = k;       // device pixels per game unit, used to snap sprites to whole pixels
   canvas.width = cw; canvas.height = Math.round(H * k);
   bg.width = canvas.width; bg.height = canvas.height;
   ctx.imageSmoothingEnabled = false;
@@ -156,6 +157,7 @@ function frame(now) {
 (async function boot() {
   try {
     character = await loadCharacter('assets/characters/zee/');
+    character.px = k;
     zee = new Zee(character, W / 2, 292);
     buildViewer();
     $('loading').remove();

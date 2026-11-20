@@ -1,6 +1,6 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js?v=202611202042';
+import { CONFIG } from './config.js?v=202611202048';
 
 // Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
 export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -84,6 +84,10 @@ export function drawAnim(ctx, character, anim, frame, x, y, face, alpha = 1) {
   const { cw, ch, anchor, scale } = character;
   const [sx, sy] = srcOf(anim, frame, cw, ch);
   const dw = cw * scale, dh = ch * scale, ax = anchor.x * scale, ay = anchor.y * scale;
+  // Snap to whole device pixels: a sprite drawn at a fractional position gets re-filtered every frame, which makes thin
+  // lines and shading shimmer ("changing lines") while she moves. Whole-pixel positions keep every frame crisp and stable.
+  const px = character.px || 1;
+  x = Math.round(x * px) / px; y = Math.round(y * px) / px;
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   if (alpha !== 1) ctx.globalAlpha = alpha;
   if (face < 0) {
