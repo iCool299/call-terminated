@@ -10,9 +10,9 @@ export const CONFIG = {
     depthSpeedFactor: 0.62,            // vertical (depth) movement is slower than sideways
     runThreshold: 0.82,                // touch joystick push needed to run
     jumpStartTime: 0.10,              // crouch before leaving the ground
-    jumpVelocity: 390,                // full jump (button held): about 50 px high
-    jumpCutVelocity: 190,             // letting go early caps the rise at this speed, so a tap is a short ~15 px hop
-    gravity: 1500,
+    jumpVelocity: 700,                // full jump (button held): about 115 px high (her whole height), ~0.65 s in the air
+    jumpCutVelocity: 500,             // letting go early caps the rise at this speed, so even a tap is a ~58 px hop
+    gravity: 2150,
     airControl: 0.85,
     dodgeDistance: 120,
     dodgeCooldown: 0.65,
