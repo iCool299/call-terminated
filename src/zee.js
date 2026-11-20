@@ -220,6 +220,8 @@ export class Zee {
       return;
     }
     if (this.phase === 'air') {
+      // variable jump height: releasing the button early cuts the rise short (a tap = small hop, hold = full jump)
+      if (!input.held('jump') && this.vz > C.jumpCutVelocity) this.vz = C.jumpCutVelocity;
       this.vz -= C.gravity * dt; this.z += this.vz * dt;
       const speed = (input.run ? C.runSpeed : C.walkSpeed) * C.airControl;
       this.x += a.x * speed * dt; this.y += a.y * speed * C.depthSpeedFactor * dt * 0.7;

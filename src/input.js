@@ -8,6 +8,7 @@ export class Input {
     this.queue = [];
     this.touchAxis = { x: 0, y: 0 };
     this.touchRun = false;
+    this.touchHeld = new Set();            // on-screen buttons currently pressed
     this.lastDevice = 'keyboard';
     this._bindKeyboard();
     this._bindTouch(root);
@@ -23,6 +24,11 @@ export class Input {
   }
   get run() { return CONFIG.keys.run.some((key) => this.keys.has(key)) || this.touchRun; }
   get moving() { const a = this.axis; return Math.abs(a.x) > 0.01 || Math.abs(a.y) > 0.01; }
+
+  // Is this action's key / touch button being held right now? (used for variable jump height)
+  held(action) {
+    return (CONFIG.keys[action] || []).some((k) => this.keys.has(k)) || this.touchHeld.has(action);
+  }
 
   consume() { const q = this.queue; this.queue = []; return q; }
   push(action) { this.queue.push(action); }
@@ -50,7 +56,7 @@ export class Input {
       if (action) this.push(action);
     });
     addEventListener('keyup', (e) => { this.keys.delete(norm(e.key)); });
-    addEventListener('blur', () => { this.keys.clear(); this.touchAxis = { x: 0, y: 0 }; });
+    addEventListener('blur', () => { this.keys.clear(); this.touchHeld.clear(); this.touchAxis = { x: 0, y: 0 }; });
   }
 
   _bindTouch(root) {
@@ -92,9 +98,10 @@ export class Input {
       btn.addEventListener('pointerdown', (e) => {
         this.lastDevice = 'touch';
         e.preventDefault(); btn.classList.add('down');
+        this.touchHeld.add(btn.dataset.action);
         this.push(btn.dataset.action);
       });
-      const up = () => btn.classList.remove('down');
+      const up = () => { btn.classList.remove('down'); this.touchHeld.delete(btn.dataset.action); };
       btn.addEventListener('pointerup', up); btn.addEventListener('pointercancel', up); btn.addEventListener('pointerleave', up);
     });
     // block the browser's own touch gestures (scroll, zoom, long-press menu) on the game surface
