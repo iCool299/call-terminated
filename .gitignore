@@ -1,0 +1,8 @@
+# working files not needed to play the game
+sprites/zee/raw/
+sprites/zee/legacy/
+sprites/main-character/
+tools/debug/
+preview/
+.claude/
+*.log

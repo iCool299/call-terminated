@@ -1,0 +1,275 @@
+﻿{
+    "character":  "zee",
+    "cell":  {
+                 "w":  224,
+                 "h":  224
+             },
+    "anchor":  {
+                   "x":  112,
+                   "y":  204
+               },
+    "standingHeightPx":  132,
+    "facing":  "right",
+    "strips":  {
+                   "idle":  {
+                                "file":  "zee_idle.png",
+                                "frames":  8
+                            },
+                   "idle_makeup":  {
+                                       "file":  "zee_idle_makeup.png",
+                                       "frames":  8
+                                   },
+                   "walk":  {
+                                "file":  "zee_walk.png",
+                                "frames":  8
+                            },
+                   "run":  {
+                               "file":  "zee_run.png",
+                               "frames":  8
+                           },
+                   "jump":  {
+                                "file":  "zee_jump.png",
+                                "frames":  8
+                            },
+                   "punch_1":  {
+                                   "file":  "zee_punch_1.png",
+                                   "frames":  6
+                               },
+                   "punch_2":  {
+                                   "file":  "zee_punch_2.png",
+                                   "frames":  6
+                               },
+                   "punch_3":  {
+                                   "file":  "zee_punch_3.png",
+                                   "frames":  6
+                               },
+                   "heavy":  {
+                                 "file":  "zee_heavy.png",
+                                 "frames":  8
+                             },
+                   "jump_kick":  {
+                                     "file":  "zee_jump_kick.png",
+                                     "frames":  6
+                                 },
+                   "dodge":  {
+                                 "file":  "zee_dodge.png",
+                                 "frames":  6
+                             },
+                   "special":  {
+                                   "file":  "zee_special.png",
+                                   "frames":  8
+                               },
+                   "hurt":  {
+                                "file":  "zee_hurt.png",
+                                "frames":  4
+                            },
+                   "knockdown":  {
+                                     "file":  "zee_knockdown.png",
+                                     "frames":  6
+                                 },
+                   "get_up":  {
+                                  "file":  "zee_get_up.png",
+                                  "frames":  6
+                              },
+                   "defeat":  {
+                                  "file":  "zee_defeat.png",
+                                  "frames":  8
+                              },
+                   "victory":  {
+                                   "file":  "zee_victory.png",
+                                   "frames":  8
+                               },
+                   "interact":  {
+                                    "file":  "zee_interact.png",
+                                    "frames":  6
+                                }
+               },
+    "animations":  {
+                       "idle":  {
+                                    "strip":  "idle",
+                                    "from":  0,
+                                    "to":  7,
+                                    "fps":  6,
+                                    "loop":  true
+                                },
+                       "idle_makeup":  {
+                                           "strip":  "idle_makeup",
+                                           "from":  0,
+                                           "to":  7,
+                                           "fps":  8,
+                                           "loop":  false
+                                       },
+                       "walk":  {
+                                    "strip":  "walk",
+                                    "from":  0,
+                                    "to":  7,
+                                    "fps":  11,
+                                    "loop":  true
+                                },
+                       "run":  {
+                                   "strip":  "run",
+                                   "from":  0,
+                                   "to":  7,
+                                   "fps":  14,
+                                   "loop":  true
+                               },
+                       "jump_start":  {
+                                          "strip":  "jump",
+                                          "from":  0,
+                                          "to":  1,
+                                          "fps":  12,
+                                          "loop":  false
+                                      },
+                       "jump_rise":  {
+                                         "strip":  "jump",
+                                         "from":  2,
+                                         "to":  3,
+                                         "fps":  10,
+                                         "loop":  false
+                                     },
+                       "jump_fall":  {
+                                         "strip":  "jump",
+                                         "from":  4,
+                                         "to":  5,
+                                         "fps":  10,
+                                         "loop":  false
+                                     },
+                       "jump_land":  {
+                                         "strip":  "jump",
+                                         "from":  6,
+                                         "to":  7,
+                                         "fps":  14,
+                                         "loop":  false
+                                     },
+                       "punch_1":  {
+                                       "strip":  "punch_1",
+                                       "from":  0,
+                                       "to":  5,
+                                       "fps":  16,
+                                       "loop":  false,
+                                       "active":  [
+                                                      3,
+                                                      4
+                                                  ]
+                                   },
+                       "punch_2":  {
+                                       "strip":  "punch_2",
+                                       "from":  0,
+                                       "to":  5,
+                                       "fps":  16,
+                                       "loop":  false,
+                                       "active":  [
+                                                      3,
+                                                      4
+                                                  ]
+                                   },
+                       "punch_3":  {
+                                       "strip":  "punch_3",
+                                       "from":  0,
+                                       "to":  5,
+                                       "fps":  14,
+                                       "loop":  false,
+                                       "active":  [
+                                                      3,
+                                                      4
+                                                  ]
+                                   },
+                       "heavy":  {
+                                     "strip":  "heavy",
+                                     "from":  0,
+                                     "to":  7,
+                                     "fps":  12,
+                                     "loop":  false,
+                                     "active":  [
+                                                    4,
+                                                    5
+                                                ]
+                                 },
+                       "jump_kick":  {
+                                         "strip":  "jump_kick",
+                                         "from":  0,
+                                         "to":  5,
+                                         "fps":  12,
+                                         "loop":  false,
+                                         "active":  [
+                                                        3,
+                                                        4
+                                                    ]
+                                     },
+                       "dodge":  {
+                                     "strip":  "dodge",
+                                     "from":  0,
+                                     "to":  5,
+                                     "fps":  14,
+                                     "loop":  false,
+                                     "iframes":  [
+                                                     1,
+                                                     2,
+                                                     3,
+                                                     4
+                                                 ]
+                                 },
+                       "special":  {
+                                       "strip":  "special",
+                                       "from":  0,
+                                       "to":  7,
+                                       "fps":  12,
+                                       "loop":  false,
+                                       "active":  [
+                                                      5,
+                                                      6
+                                                  ]
+                                   },
+                       "hurt":  {
+                                    "strip":  "hurt",
+                                    "from":  0,
+                                    "to":  3,
+                                    "fps":  10,
+                                    "loop":  false
+                                },
+                       "knockdown":  {
+                                         "strip":  "knockdown",
+                                         "from":  0,
+                                         "to":  5,
+                                         "fps":  10,
+                                         "loop":  false
+                                     },
+                       "get_up":  {
+                                      "strip":  "get_up",
+                                      "from":  0,
+                                      "to":  5,
+                                      "fps":  10,
+                                      "loop":  false,
+                                      "iframes":  [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      3,
+                                                      4,
+                                                      5
+                                                  ]
+                                  },
+                       "defeat":  {
+                                      "strip":  "defeat",
+                                      "from":  0,
+                                      "to":  7,
+                                      "fps":  8,
+                                      "loop":  false
+                                  },
+                       "victory":  {
+                                       "strip":  "victory",
+                                       "from":  0,
+                                       "to":  7,
+                                       "fps":  8,
+                                       "loop":  true,
+                                       "loopFrom":  4
+                                   },
+                       "interact":  {
+                                        "strip":  "interact",
+                                        "from":  0,
+                                        "to":  5,
+                                        "fps":  10,
+                                        "loop":  false
+                                    }
+                   }
+}
