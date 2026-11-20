@@ -94,7 +94,8 @@ export class Zee {
   _visuals(dt) {
     if (this.px !== undefined) {
       const v = Math.hypot(this.x - this.px, this.y - this.py) / dt;
-      const target = Math.min(1, Math.max(0, (v - 70) / 150));
+      // walk (110 px/s) barely registers, a full run (220 px/s) gives a gentle trail
+      const target = Math.min(0.5, Math.max(0, (v - 100) / 260));
       this.blur += (target - this.blur) * Math.min(1, dt * 18);
     }
     this._trailT += dt;

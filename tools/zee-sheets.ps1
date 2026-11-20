@@ -1,9 +1,9 @@
-# v2 (more frames) sheets. Cfg name file frames rows standH.
+﻿# v2 (more frames) sheets. Cfg name file frames rows standH.
 # StandH = Zee's standing height in source pixels for that sheet (measured from guard/idle frames; the generator keeps one pixel scale per sheet).
 $sheets = @(
     (Cfg 'idle'        'idle_v2.png'        12 3 323),
     (Cfg 'idle_makeup' 'idle_makeup_v2.png' 16 4 277),
-    (Cfg 'walk'        'walk_v2.png'        12 3 323),
+    (Cfg 'walk'        'walk_v3.png'        12 3 323),
     (Cfg 'run'         'run_v3.png'         12 3 323),
     (Cfg 'jump'        'jump_v2.png'        12 3 323),
     (Cfg 'punch_1'     'punch_1_v2.png'     10 2 353),
@@ -19,3 +19,4 @@ $sheets = @(
     (Cfg 'victory'     'victory_v2.png'     12 3 323),
     (Cfg 'interact'    'interact_v2.png'     8 2 387)
 )
+

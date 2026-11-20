@@ -296,6 +296,38 @@ namespace Zee2
                 }
         }
 
+        // Texture stabiliser: the generated art has painterly noise (e.g. in the dark pants) that snaps to a different palette
+        // shade on every frame and flickers. Each pixel takes the dominant colour of its 5x5 neighbourhood when that colour is a
+        // close shade of its own; real details (outlines, lanyard, face, white shoes) differ strongly and are untouched.
+        static bool IsOutline(int c) { int l = (((c >> 16) & 255) * 30 + ((c >> 8) & 255) * 59 + (c & 255) * 11) / 100; return l < 32; }
+
+        public static void Denoise(SheetOut o, int passes, double maxDist, int r)
+        {
+            Dictionary<int, int> tally = new Dictionary<int, int>();
+            foreach (int[] fr in o.Frames)
+                for (int pass = 0; pass < passes; pass++)
+                {
+                    int[] src = (int[])fr.Clone();
+                    for (int y = r; y < CH - r; y++)
+                        for (int x = r; x < CW - r; x++)
+                        {
+                            int p = src[y * CW + x];
+                            if ((p >> 24) == 0 || IsOutline(p & 0xFFFFFF)) continue;     // never touch transparent pixels or outlines
+                            tally.Clear(); int n = 0;
+                            for (int dy = -r; dy <= r; dy++)
+                                for (int dx = -r; dx <= r; dx++)
+                                {
+                                    int q = src[(y + dy) * CW + x + dx];
+                                    if ((q >> 24) == 0 || IsOutline(q & 0xFFFFFF)) continue;
+                                    int c; tally.TryGetValue(q, out c); tally[q] = c + 1; n++;
+                                }
+                            int best = p, bestN = 0;
+                            foreach (KeyValuePair<int, int> kv in tally) if (kv.Value > bestN) { bestN = kv.Value; best = kv.Key; }
+                            if (best != p && bestN * 100 >= n * 30 && Dist(p & 0xFFFFFF, best & 0xFFFFFF) < maxDist) fr[y * CW + x] = best;
+                        }
+                }
+        }
+
         public static void SaveStrip(SheetOut o, string path)
         {
             int n = o.Frames.Length;
@@ -355,6 +387,7 @@ namespace Zee2
             List<SheetOut> outs = new List<SheetOut>();
             foreach (SheetCfg c in cfgs) outs.Add(Process(c, root, log));
             foreach (SheetOut o in outs) Quantize(o, pal);
+            foreach (SheetOut o in outs) Denoise(o, 2, 9000, 3);
             Directory.CreateDirectory(outDir);
             foreach (SheetOut o in outs) SaveStrip(o, System.IO.Path.Combine(outDir, "zee_" + o.Cfg.Name + ".png"));
             if (!string.IsNullOrEmpty(sheetPath)) SaveSheet(outs, sheetPath, 1);

@@ -15,14 +15,14 @@ function Cfg($name, $file, $n, $rows, $standH) {
 . (Join-Path $PSScriptRoot "zee-anims$Suffix.ps1")
 
 # Extra palette colors for props that are not on the master (compact mirror, lipstick, red pen, scorecard stars).
-$extras = @(0xC98B8B, 0x9E6670, 0xE6B5B0, 0x8A3F4A, 0xF5C542, 0xC99A2E)   # no reds: they pulled drifting hijab pixels toward red
+$extras = @()    # the master's own palette only: extra pink/red/gold entries attracted stray speckle pixels onto the pants
 $master = Join-Path $root 'sprites\zee\master\zee_master_idle_v1.png'
 $outName = 'zee' + ($Suffix -replace '-', '_')
 $out = Join-Path $root "assets\characters\$outName"
 $dbg = Join-Path $root 'tools\debug'
 New-Item -ItemType Directory -Force $dbg | Out-Null
 New-Item -ItemType Directory -Force $out | Out-Null
-$log = [Zee2.Pipe]::Run($root, $master, $out, '', $sheets, 56, $extras)     # 56-colour palette keeps the shading; no debug sheet (it would be huge at 2x)
+$log = [Zee2.Pipe]::Run($root, $master, $out, '', $sheets, 32, $extras)     # 32 colours + texture stabiliser = clean flat shading; no debug sheet (it would be huge at 2x)
 $log | Out-File (Join-Path $dbg "zee-build$Suffix.log") -Encoding utf8
 
 # Manifest
