@@ -331,6 +331,56 @@ namespace Zee2
             }
         }
 
+        // ---- Temporal consensus: the root fix for "changing lines/colours" between frames -----------------------------------
+        // All frames of an animation share one anchor, so the same pixel position shows the same body part in most frames.
+        // For every position, if the same fabric (colour class) appears there in at least `minCount` frames, every frame that shows
+        // that fabric there takes the most common colour - the painterly shading that differed from frame to frame disappears,
+        // while true motion (limbs moving, expressions) is untouched because those pixels change class.
+        public static void TemporalConsensus(SheetOut o, int minCount, double maxDist)
+        {
+            int n = o.Frames.Length, size = CW * CH;
+            int[][] res = new int[n][]; for (int f = 0; f < n; f++) res[f] = (int[])o.Frames[f].Clone();
+            int[] cls = new int[n]; Dictionary<int, int> classCount = new Dictionary<int, int>(); Dictionary<int, int> colCount = new Dictionary<int, int>();
+            for (int i = 0; i < size; i++)
+            {
+                classCount.Clear();
+                for (int f = 0; f < n; f++)
+                {
+                    int p = o.Frames[f][i];
+                    if ((p >> 24) == 0) { cls[f] = -1; continue; }
+                    int k = Cls(p & 0xFFFFFF); cls[f] = k;
+                    if (k == 0) continue;                       // outlines are never altered
+                    int c; classCount.TryGetValue(k, out c); classCount[k] = c + 1;
+                }
+                foreach (KeyValuePair<int, int> kc in classCount)
+                {
+                    if (kc.Value < minCount) continue;
+                    colCount.Clear();
+                    for (int f = 0; f < n; f++) if (cls[f] == kc.Key) { int p = o.Frames[f][i]; int c; colCount.TryGetValue(p, out c); colCount[p] = c + 1; }
+                    int mode = 0, mc = 0; foreach (KeyValuePair<int, int> cc in colCount) if (cc.Value > mc) { mc = cc.Value; mode = cc.Key; }
+                    for (int f = 0; f < n; f++)
+                        if (cls[f] == kc.Key) { int p = o.Frames[f][i]; if (p != mode && Dist(p & 0xFFFFFF, mode & 0xFFFFFF) < maxDist) res[f][i] = mode; }
+                }
+            }
+            for (int f = 0; f < n; f++) Array.Copy(res[f], o.Frames[f], size);
+        }
+
+        // ---- colour classes (used by the temporal consensus above) ----------------------------
+        // Every generated frame is its own painting, so its fabric shading never matches the neighbouring frames. Here each fabric
+        // (denim / dark cloth = hijab+pants+scarf / white = shirt+shoes) is recoloured from a heavily smoothed local brightness and
+        // snapped to at most THREE fixed tones, so the shading is the same simple pattern on every frame.
+        static double Luma(int c) { return (((c >> 16) & 255) * 30 + ((c >> 8) & 255) * 59 + (c & 255) * 11) / 100.0; }
+        static int Cls(int c)
+        {
+            int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255; double l = Luma(c);
+            if (l < 32) return 0;                                   // outline
+            if (IsSkin(c)) return 1;                                // skin (and copper rivets)
+            if (b > 150 && r < 90) return 2;                        // bright blue accents (lanyard)
+            if (l > 165 && Math.Max(r, Math.Max(g, b)) - Math.Min(r, Math.Min(g, b)) < 45) return 3;   // white: shirt, shoes
+            if (b > r + 18 && b > g + 5) return 4;                  // denim
+            return 5;                                               // dark cloth: hijab, scarf, pants
+        }
+
         static bool IsSkin(int c) { int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255; return r > 140 && r > g + 25 && g > b + 8; }
 
         static bool IsOutline(int c) { int l = (((c >> 16) & 255) * 30 + ((c >> 8) & 255) * 59 + (c & 255) * 11) / 100; return l < 32; }
@@ -423,6 +473,8 @@ namespace Zee2
             foreach (SheetOut o in outs) Bilateral(o, 6, 3.5, 7000);
             foreach (SheetOut o in outs) Quantize(o, pal);
             foreach (SheetOut o in outs) Denoise(o, 2, 9000, 3);
+            foreach (SheetOut o in outs) TemporalConsensus(o, 4, 14000);
+            foreach (SheetOut o in outs) Denoise(o, 1, 9000, 2);
             Directory.CreateDirectory(outDir);
             foreach (SheetOut o in outs) SaveStrip(o, System.IO.Path.Combine(outDir, "zee_" + o.Cfg.Name + ".png"));
             if (!string.IsNullOrEmpty(sheetPath)) SaveSheet(outs, sheetPath, 1);
