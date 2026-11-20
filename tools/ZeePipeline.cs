@@ -299,6 +299,40 @@ namespace Zee2
         // Texture stabiliser: the generated art has painterly noise (e.g. in the dark pants) that snaps to a different palette
         // shade on every frame and flickers. Each pixel takes the dominant colour of its 5x5 neighbourhood when that colour is a
         // close shade of its own; real details (outlines, lanyard, face, white shoes) differ strongly and are untouched.
+        // Edge-preserving (bilateral) smoothing, applied before the palette snap: removes the blotchy painterly shading that
+        // differs on every generated frame (it reads as flickering colours/lines) while keeping outlines, face and shapes sharp.
+        public static void Bilateral(SheetOut o, int r, double sigmaS, double colorScale)
+        {
+            int span = 2 * r + 1;
+            double[] spatial = new double[span * span];
+            for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) spatial[(dy + r) * span + dx + r] = Math.Exp(-(dx * dx + dy * dy) / (2 * sigmaS * sigmaS));
+            double[] lut = new double[4096];                       // colour-distance -> weight, Dist/64 as the index
+            for (int i = 0; i < lut.Length; i++) lut[i] = Math.Exp(-(i * 64.0) / colorScale);
+            foreach (int[] fr in o.Frames)
+            {
+                int[] src = (int[])fr.Clone();
+                for (int y = r; y < CH - r; y++)
+                    for (int x = r; x < CW - r; x++)
+                    {
+                        int p = src[y * CW + x];
+                        if ((p >> 24) == 0 || IsOutline(p & 0xFFFFFF) || IsSkin(p & 0xFFFFFF)) continue;   // outlines and skin (face, hands) stay exactly as drawn
+                        double sw = 0, sr = 0, sg = 0, sb = 0;
+                        for (int dy = -r; dy <= r; dy++)
+                            for (int dx = -r; dx <= r; dx++)
+                            {
+                                int q = src[(y + dy) * CW + x + dx];
+                                if ((q >> 24) == 0 || IsOutline(q & 0xFFFFFF)) continue;
+                                int di = (int)(Dist(p & 0xFFFFFF, q & 0xFFFFFF) / 64.0); if (di > 4095) continue;
+                                double w = spatial[(dy + r) * span + dx + r] * lut[di];
+                                sw += w; sr += w * ((q >> 16) & 255); sg += w * ((q >> 8) & 255); sb += w * (q & 255);
+                            }
+                        if (sw > 0) fr[y * CW + x] = unchecked((int)0xFF000000) | ((int)(sr / sw + 0.5) << 16) | ((int)(sg / sw + 0.5) << 8) | (int)(sb / sw + 0.5);
+                    }
+            }
+        }
+
+        static bool IsSkin(int c) { int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255; return r > 140 && r > g + 25 && g > b + 8; }
+
         static bool IsOutline(int c) { int l = (((c >> 16) & 255) * 30 + ((c >> 8) & 255) * 59 + (c & 255) * 11) / 100; return l < 32; }
 
         public static void Denoise(SheetOut o, int passes, double maxDist, int r)
@@ -386,6 +420,7 @@ namespace Zee2
             int[] pal = BuildPalette(masterPath, paletteSize, extras, log);
             List<SheetOut> outs = new List<SheetOut>();
             foreach (SheetCfg c in cfgs) outs.Add(Process(c, root, log));
+            foreach (SheetOut o in outs) Bilateral(o, 6, 3.5, 7000);
             foreach (SheetOut o in outs) Quantize(o, pal);
             foreach (SheetOut o in outs) Denoise(o, 2, 9000, 3);
             Directory.CreateDirectory(outDir);
