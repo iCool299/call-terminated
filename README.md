@@ -1,4 +1,4 @@
-# Quality Control: Office Mayhem
+﻿# Escalation Brawl
 
 2D side-scrolling beat 'em up. This stage contains the playable main character (Zee), built as a web app for
 PC/laptop (keyboard) and Android/iPhone (touch).
@@ -44,3 +44,4 @@ To replace an animation: put the new raw sheet in `sprites/zee/raw/`, update its
 ## Sprite spec (final)
 Cell 224x224 px, feet anchor at (112, 204), Zee about 132 px tall, drawn facing right (mirrored in code for left).
 Recommended game size 640x360 (scaled to fit any screen).
+

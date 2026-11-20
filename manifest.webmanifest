@@ -1,6 +1,6 @@
-﻿{
-  "name": "Quality Control: Office Mayhem",
-  "short_name": "QC Mayhem",
+{
+  "name": "Escalation Brawl",
+  "short_name": "Escalation",
   "start_url": "./index.html",
   "display": "fullscreen",
   "orientation": "landscape",
@@ -11,3 +11,4 @@
     { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
+
