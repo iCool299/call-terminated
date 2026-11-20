@@ -1,8 +1,11 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611202054';
-import { loadCharacter, VERSION } from './assets.js?v=202611202054';
-import { Input } from './input.js?v=202611202054';
-import { Zee } from './zee.js?v=202611202054';
+import { CONFIG } from './config.js?v=202611202226';
+import { loadCharacter, VERSION } from './assets.js?v=202611202226';
+import { Input } from './input.js?v=202611202226';
+import { Zee } from './zee.js?v=202611202226';
+import { Game } from './game.js?v=202611202226';
+import { ENEMY_IDS } from './enemy.js?v=202611202226';
+import { unlock } from './sfx.js?v=202611202226';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -12,8 +15,10 @@ const bgCtx = bg.getContext('2d');
 let k = 1;                                        // internal pixels per game pixel (canvas renders at display resolution)
 
 const $ = (id) => document.getElementById(id);
+const loadedEnemyChars = [];
 const input = new Input(document);
-let character, zee;
+let character, zee, game;
+const enemyChars = new Map();                     // id -> Promise<character>, loaded on demand (and preloaded in the background)
 let paused = false;
 let last = performance.now();
 
@@ -31,6 +36,7 @@ function resize() {
   const cw = Math.max(W, Math.min(1920, Math.round(cssW * dpr)));
   k = cw / W;
   if (character) character.px = k;       // device pixels per game unit, used to snap sprites to whole pixels
+  for (const c of loadedEnemyChars) c.px = k;
   canvas.width = cw; canvas.height = Math.round(H * k);
   bg.width = canvas.width; bg.height = canvas.height;
   ctx.imageSmoothingEnabled = false;
@@ -104,6 +110,7 @@ function drawHud() {
   ctx.fillStyle = '#10101a'; ctx.fillRect(x - 2, y - 2, bw + 4, bh + 4);
   ctx.fillStyle = '#3a2430'; ctx.fillRect(x, y, bw, bh);
   const pct = zee.hp / CONFIG.zee.maxHp;
+  if (zee.flash > 0) { ctx.fillStyle = '#ff5a4a'; ctx.fillRect(x - 2, y - 2, bw + 4, bh + 4); ctx.fillStyle = '#10101a'; ctx.fillRect(x - 1, y - 1, bw + 2, bh + 2); ctx.fillStyle = '#3a2430'; ctx.fillRect(x, y, bw, bh); }
   ctx.fillStyle = pct > 0.5 ? '#6ad26a' : pct > 0.25 ? '#e8c34a' : '#e2574c';
   ctx.fillRect(x, y, Math.round(bw * pct), bh);
   ctx.fillStyle = '#fff'; ctx.font = 'bold 9px ui-monospace, Consolas, monospace';
@@ -129,6 +136,31 @@ function updateButtons() {       // only touch the DOM when a value actually cha
   }
 }
 
+// ---------- enemies: spawn button ----------
+function enemyChar(id) {
+  if (!enemyChars.has(id)) {
+    enemyChars.set(id, loadCharacter(`assets/characters/${id}/`, id).then((c) => { c.px = k; loadedEnemyChars.push(c); return c; }));
+  }
+  return enemyChars.get(id);
+}
+function setupSpawner() {
+  const btn = $('btn-spawn');
+  let lastId = '';
+  const spawn = async () => {
+    unlock();
+    const pool = ENEMY_IDS.filter((i) => i !== lastId);
+    const id = pool[Math.floor(Math.random() * pool.length)]; lastId = id;
+    try { game.spawn(id, await enemyChar(id)); } catch (err) { console.error(err); }
+  };
+  btn.addEventListener('pointerdown', (e) => { e.preventDefault(); spawn(); });
+  btn.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') e.preventDefault(); });     // Space is the special attack, not a button press
+  btn.tabIndex = -1;
+  // warm the cache one by one in the background so the first spawn of each type is instant
+  (async () => { for (const id of ENEMY_IDS) { try { await enemyChar(id); } catch (e) { /* loaded on demand later */ } } })();
+  addEventListener('pointerdown', unlock, { once: true }); addEventListener('keydown', unlock, { once: true });
+  window.__spawn = (id) => enemyChar(id).then((c) => game.spawn(id, c));
+}
+
 // ---------- loop ----------
 // Logic runs on a fixed 120 Hz step (same behaviour on any device); drawing runs every display refresh
 // and interpolates between logic steps, so 60 / 90 / 120 / 144 Hz screens all look smooth.
@@ -143,12 +175,17 @@ function frame(now) {
   if (paused) { input.consume(); acc = 0; }
   else {
     acc += dt;
-    while (acc >= STEP) { zee.snapshot(); zee.update(STEP, input, bounds); acc -= STEP; }
+    while (acc >= STEP) { game.snapshot(); game.update(STEP, input); acc -= STEP; }
   }
+  const sx = game.shake > 0 ? (Math.random() - 0.5) * 2 * game.shake : 0, sy = game.shake > 0 ? (Math.random() - 0.5) * 2 * game.shake : 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(1, 0, 0, 1, Math.round(sx * k), Math.round(sy * k));
   ctx.drawImage(bg, 0, 0);
+  ctx.setTransform(k, 0, 0, k, Math.round(sx * k), Math.round(sy * k));
+  game.draw(ctx, paused ? 1 : acc / STEP);
   ctx.setTransform(k, 0, 0, k, 0, 0);
-  zee.draw(ctx, paused ? 1 : acc / STEP); drawHud(); updateButtons();
+  drawHud(); game.drawHud(ctx); updateButtons();
   const text = `${zee.viewer ? 'viewer' : zee.state} | ${zee.animName} ${zee.frame + 1}/${zee.anim.frames} | v${VERSION}`;
   if (text !== readoutText) { readoutText = text; $('readout').textContent = text; }
   requestAnimationFrame(frame);
@@ -159,10 +196,12 @@ function frame(now) {
     character = await loadCharacter('assets/characters/zee/');
     character.px = k;
     zee = new Zee(character, W / 2, 292);
+    game = new Game(zee, bounds);
     buildViewer();
+    setupSpawner();
     $('loading').remove();
     requestAnimationFrame((t) => { last = t; frame(t); });
-    window.__zee = zee; window.__input = input;      // handy for debugging in the console
+    window.__zee = zee; window.__input = input; window.__game = game;     // handy for debugging in the console
   } catch (err) {
     $('loading').textContent = 'Could not load assets: ' + err.message + ' (run through a local web server)';
   }

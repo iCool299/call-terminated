@@ -96,7 +96,12 @@
                                     "file":  "zee_interact.png",
                                     "frames":  8,
                                     "cols":  8
-                                }
+                                },
+                   "grabbed":  {
+                                   "file":  "zee_grabbed.png",
+                                   "frames":  16,
+                                   "cols":  8
+                               }
                },
     "animations":  {
                        "idle":  {
@@ -286,6 +291,20 @@
                                         "to":  7,
                                         "fps":  14,
                                         "loop":  false
-                                    }
+                                    },
+                       "grabbed":  {
+                                       "strip":  "grabbed",
+                                       "from":  1,
+                                       "to":  8,
+                                       "fps":  12,
+                                       "loop":  true
+                                   },
+                       "thrown":  {
+                                      "strip":  "grabbed",
+                                      "from":  9,
+                                      "to":  15,
+                                      "fps":  14,
+                                      "loop":  false
+                                  }
                    }
 };

@@ -24,6 +24,29 @@ export const CONFIG = {
     lunge: { punch_1: 22, punch_2: 26, punch_3: 40, special: 0, jump_kick: 0 },
     // Printout Barrage: sheets of paper fired forward during the special's hit frames
     barrage: { speed: 330, life: 0.9, perFrame: 2, spread: 22, damage: 12 },
+    // melee hits: damage, reach (px in front of her), knock = sends the enemy to the floor
+    attacks: {
+      punch_1:   { dmg: 8,  reach: 56, knock: false },
+      punch_2:   { dmg: 9,  reach: 58, knock: false },
+      punch_3:   { dmg: 15, reach: 64, knock: true },
+      jump_kick: { dmg: 12, reach: 60, knock: true },
+    },
+    escapeMash: 9,                     // button presses while grabbed to break free
+  },
+
+  enemy: {
+    hp: 60,
+    walkSpeed: 78,
+    attackRange: 46,                   // how close they stand to attack
+    engageY: 12,                       // how well they line up in depth before attacking
+    punchDmg: 6, kickDmg: 8,
+    headsetDmg: 8, headsetSpeed: 250,  // thrown call-centre headset (jump over it!)
+    grabRange: 54, grabChance: 0.35,   // grabbers (navy, sporty) try to grab Zee this often
+    throwDamagePct: 0.2,               // being thrown costs this share of Zee's max HP
+    throwSpeed: 300, throwLift: 520,
+    cooldown: [0.9, 1.8],              // seconds between attacks
+    keepDistance: 190,                 // headset throwers like to stay about this far away
+    corpseTime: 1.8,
   },
 
   windupSpeed: 1.4,       // wind-up frames (before the first hit frame) play this much faster

@@ -20,5 +20,7 @@ $anims = @(
     @{ name='get_up';      strip='get_up';      from=0; to=11; fps=16; loop=$false; iframes=@(0,1,2,3,4,5,6,7,8,9,10,11) },
     @{ name='defeat';      strip='defeat';      from=0; to=11; fps=12; loop=$false },
     @{ name='victory';     strip='victory';     from=0; to=11; fps=10; loop=$true; loopFrom=6 },
-    @{ name='interact';    strip='interact';    from=0; to=7;  fps=14; loop=$false }
+    @{ name='interact';    strip='interact';    from=0; to=7;  fps=14; loop=$false },
+    @{ name='grabbed';     strip='grabbed';     from=1; to=8;  fps=12; loop=$true },
+    @{ name='thrown';      strip='grabbed';     from=9; to=15; fps=14; loop=$false }
 )

@@ -7,10 +7,10 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $ver = Get-Date -Format 'yyyyMMddHHmm'
 $utf8 = New-Object System.Text.UTF8Encoding($false)      # always read/write UTF-8 (the default PowerShell encoding corrupts files)
-foreach ($f in 'src\main.js', 'src\zee.js', 'src\assets.js', 'src\input.js') {
+foreach ($f in 'src\main.js', 'src\zee.js', 'src\assets.js', 'src\input.js', 'src\enemy.js', 'src\game.js', 'src\sfx.js') {
     $p = Join-Path $root $f
     $t = [IO.File]::ReadAllText($p, $utf8)
-    $t = [regex]::Replace($t, "from '(\./(?:config|assets|input|zee))\.js(\?v=[0-9a-z]+)?'", "from '`$1.js?v=$ver'")
+    $t = [regex]::Replace($t, "from '(\./(?:config|assets|input|zee|enemy|game|sfx))\.js(\?v=[0-9a-z]+)?'", "from '`$1.js?v=$ver'")
     [IO.File]::WriteAllText($p, $t, $utf8)
 }
 $p = Join-Path $root 'index.html'

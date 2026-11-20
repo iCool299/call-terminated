@@ -27,6 +27,9 @@
   #btn-pause { top:calc(8px + env(safe-area-inset-top,0px)); right:calc(8px + var(--safe-r)); position:fixed; z-index:6; width:44px; height:44px; padding:0; font-size:18px; }
   #btn-viewer { top:calc(8px + env(safe-area-inset-top,0px)); right:calc(60px + var(--safe-r)); position:fixed; z-index:6; height:44px; }
 
+  #btn-spawn { position:fixed; top:calc(8px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); z-index:6; height:44px; padding:0 18px; font-weight:700; background:#ff8a5c; color:#1a1209; border-color:#ff8a5c; }
+  #btn-spawn:active { transform:translateX(-50%) scale(.96); }
+
   /* touch controls */
   #touch { display:none; position:fixed; inset:0; z-index:4; pointer-events:none; }
   body.touch #touch { display:block; }
@@ -69,6 +72,7 @@
 
 <div id="readout" class="chip">loading...</div>
 <div id="hints" class="chip">Move <b>WASD</b>/<b>Arrows</b> &middot; Run <b>Shift</b> &middot; Hit <b>J</b> (x3 combo) &middot; Dodge <b>L</b> &middot; Jump <b>I</b> &middot; Special <b>Space</b> &middot; Pause <b>Esc</b></div>
+<button id="btn-spawn" class="ui">+ Spawn enemy</button>
 <button id="btn-viewer" class="ui">Animations</button>
 <button id="btn-pause" class="ui" aria-label="Pause">&#10074;&#10074;</button>
 
@@ -103,7 +107,7 @@
 <div id="rotate"><div><h2>Rotate your phone</h2><p style="color:var(--mute)">This game plays in landscape.</p></div></div>
 <div id="loading">Loading Zee...</div>
 
-<script type="module" src="src/main.js?v=202611202054"></script>
+<script type="module" src="src/main.js?v=202611202226"></script>
 </body>
 </html>
 

@@ -29,13 +29,15 @@ namespace Zee2
     {
         // Frames are built at 2x the game's 132 px character height so the game can draw them at your screen's real
         // resolution without blur or blockiness (drawScale 0.5 in the manifest brings them back to game units).
-        public const int CW = 384;          // cell width (wide: kicks, thrown paper and lying poses need sideways room)
-        public const int CH = 320;          // cell height
-        public const int CELL = CH;         // legacy name, used by the (unused) debug sheet only
-        public const int ANCHOR_X = 192;
-        public const int BASE_Y = 296;
-        public const double TARGET_STAND = 264.0;
+        // Cell geometry is configurable per character (Zee: 384x320, standing 264 px; tall enemies get taller cells).
+        public static int CW = 384;          // cell width (wide: kicks, thrown paper and lying poses need sideways room)
+        public static int CH = 320;          // cell height
+        public static int ANCHOR_X = 192;
+        public static int BASE_Y = 296;
+        public static double TARGET_STAND = 264.0;   // standing height in output px (always 2x the character's game height)
+        public static string Prefix = "zee_";     // output file prefix (strips are named <prefix><sheet>.png)
         public const int MAX_COLS = 8;      // strips are packed in grids at most 8 frames wide (phone GPUs limit texture width)
+        public static void Configure(int cw, int ch, int anchorX, int baseY, double targetStand) { CW = cw; CH = ch; ANCHOR_X = anchorX; BASE_Y = baseY; TARGET_STAND = targetStand; }
         public static bool Nearest = false;
 
         public class Src { public int W; public int H; public int[] P; }
@@ -176,7 +178,9 @@ namespace Zee2
                 rowBase[r] = Median(rb.Take((int)Math.Ceiling(perRow * 0.6)).ToArray());
             }
             int by = rowBase[0];
-            double scale = c.Scale > 0 ? c.Scale : TARGET_STAND / (c.StandH > 0 ? c.StandH : Median(heights));
+            // StandH > 0: given; StandH < 0: auto = height of the first frame (every enemy sheet starts with the neutral standing pose)
+            double stand = c.StandH > 0 ? c.StandH : (c.StandH < 0 ? heights[0] : Median(heights));
+            double scale = c.Scale > 0 ? c.Scale : TARGET_STAND / stand;
             for (int k = 0; k < n; k++)
                 log.AppendLine(string.Format("  f{0}: bbox x[{1}-{2}] y[{3}-{4}] h={5} w={6} legCx={7:0}", k, minX[k], maxX[k], minY[k], maxY[k], heights[k], maxX[k] - minX[k] + 1, legCx[k]));
             log.AppendLine(string.Format("  baseline(src)={0} scale={1:0.0000} (standing equiv {2:0} src px, median frame h {3})", by, scale, TARGET_STAND / scale, Median(heights)));
@@ -434,36 +438,6 @@ namespace Zee2
             }
         }
 
-        public static void SaveSheet(List<SheetOut> outs, string path, int zoom)
-        {
-            int maxN = outs.Max(o => o.Frames.Length);
-            int w = CELL * maxN * zoom, h = CELL * outs.Count * zoom;
-            using (Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb))
-            {
-                int[] buf = new int[w * h];
-                for (int i = 0; i < buf.Length; i++) buf[i] = unchecked((int)0xFF8FA0B0);
-                for (int r = 0; r < outs.Count; r++)
-                {
-                    SheetOut o = outs[r];
-                    for (int k = 0; k < o.Frames.Length; k++)
-                        for (int y = 0; y < CELL * zoom; y++)
-                            for (int x = 0; x < CELL * zoom; x++)
-                            {
-                                int dx = k * CELL * zoom + x, dy = r * CELL * zoom + y;
-                                int gy = y / zoom, gx = x / zoom;
-                                int px = o.Frames[k][gy * CELL + gx];
-                                if ((px >> 24) != 0) buf[dy * w + dx] = px;
-                                else if (gy == BASE_Y || (x % (CELL * zoom) == 0)) buf[dy * w + dx] = unchecked((int)0xFFC0504A);
-                                else if (gy == BASE_Y - (int)TARGET_STAND && (gx % 4 < 2)) buf[dy * w + dx] = unchecked((int)0xFF6A8F6A);
-                            }
-                }
-                BitmapData bd = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-                Marshal.Copy(buf, 0, bd.Scan0, buf.Length);
-                bmp.UnlockBits(bd);
-                bmp.Save(path, ImageFormat.Png);
-            }
-        }
-
         public static string Run(string root, string masterPath, string outDir, string sheetPath, SheetCfg[] cfgs, int paletteSize, int[] extras)
         {
             StringBuilder log = new StringBuilder();
@@ -476,8 +450,7 @@ namespace Zee2
             foreach (SheetOut o in outs) TemporalConsensus(o, 4, 14000);
             foreach (SheetOut o in outs) Denoise(o, 1, 9000, 2);
             Directory.CreateDirectory(outDir);
-            foreach (SheetOut o in outs) SaveStrip(o, System.IO.Path.Combine(outDir, "zee_" + o.Cfg.Name + ".png"));
-            if (!string.IsNullOrEmpty(sheetPath)) SaveSheet(outs, sheetPath, 1);
+            foreach (SheetOut o in outs) SaveStrip(o, System.IO.Path.Combine(outDir, Prefix + o.Cfg.Name + ".png"));
             return log.ToString();
         }
     }

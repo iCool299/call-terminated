@@ -1,13 +1,13 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611202054';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611202054';
+import { CONFIG } from './config.js?v=202611202226';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611202226';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
 
 // A soft round shadow blob, drawn once and reused for Zee's contact shadow and the paper shadows (no per-frame gradients).
-const SOFT = (() => {
+export const SOFT = (() => {
   const c = document.createElement('canvas'); c.width = 64; c.height = 64;
   const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   r.addColorStop(0, 'rgba(0,0,0,0.85)'); r.addColorStop(0.55, 'rgba(0,0,0,0.38)'); r.addColorStop(1, 'rgba(0,0,0,0)');
@@ -38,7 +38,56 @@ export class Zee {
     this.queued = false;
     this.phase = '';
     this.viewer = null;           // {name, loop} when the animation viewer is driving the sprite
+    this.flash = 0;               // red hit-flash timer
+    this.attackId = 0;            // changes with every swing so one swing hits each enemy once
+    this.holder = null;           // the enemy holding her
+    this.events = [];             // things the game layer reacts to (e.g. slam)
     this._play('idle');
+  }
+
+  // ---------- melee hitbox for the current swing (or null) ----------
+  attackBox() {
+    const a = C.attacks[this.animName];
+    if (!a || !this.anim.active.includes(this.frame)) return null;
+    if (this.state !== 'attack' && !(this.state === 'jump' && this.animName === 'jump_kick')) return null;
+    return { id: this.attackId, ...a };
+  }
+
+  // ---------- being grabbed and thrown ----------
+  canBeGrabbed() {
+    return !['held', 'thrown', 'down', 'getup', 'defeat', 'dodge', 'hurt'].includes(this.state) && this.invuln <= 0 && this.z <= 20;
+  }
+  getGrabbed(holder) {
+    this.holder = holder; this.vx = 0; this.vz = 0; this.struggle = 0;
+    this._enter('held', 'grabbed');
+  }
+  _held(dt, input, actions) {
+    const h = this.holder;
+    if (!h || !h.holdingZee) { this.holder = null; return this._fall(0, false); }
+    const p = h.holdPoint();
+    this.x = p.x; this.y = h.y + 1; this.z = p.z; this.face = -h.face;
+    for (const a of actions) if (a === 'light' || a === 'jump' || a === 'dodge' || a === 'special') this.struggle++;
+    if (this.struggle >= C.escapeMash) { h.breakFree(); this.events.push({ type: 'escape' }); this._fall(-h.face * 120, false); }
+  }
+  // flung by the holder; lands as a slam that costs a share of her HP
+  throwAway(dir) { this.holder = null; this._fall(dir * CONFIG.enemy.throwSpeed, true); this.vz = CONFIG.enemy.throwLift; }
+  _fall(vx, slam) {
+    this.vx = vx; this.vz = 80; this.slam = slam; this.holder = null;
+    this._enter('thrown', 'thrown');
+  }
+  _thrown(dt) {
+    this.x += this.vx * dt; this.vz -= C.gravity * dt; this.z += this.vz * dt;
+    if (this.z <= 0 && this.vz < 0) {
+      this.z = 0; this.vz = 0;
+      if (this.slam) {
+        const dmg = Math.round(C.maxHp * CONFIG.enemy.throwDamagePct);
+        this.hp = Math.max(0, this.hp - dmg); this.flash = 0.3;
+        this.events.push({ type: 'slam', dmg });
+        this._knockdown(Math.sign(this.vx) || this.face, this.hp <= 0);
+        this.vx = 0;
+        const st = this.anims.knockdown.starts; this.t = st[Math.min(6, st.length - 2)];   // she is already on her back
+      } else { this.invuln = 0.8; this._enter('idle'); }
+    }
   }
 
   // ---------- animation helpers ----------
@@ -60,7 +109,7 @@ export class Zee {
   }
   _updatePapers(dt) {
     for (const p of this.papers) { p.t += dt; p.x += p.vx * dt; p.vz -= 55 * dt; p.z = Math.max(4, p.z + p.vz * dt); p.spin += dt * 14; }
-    this.papers = this.papers.filter((p) => p.t < C.barrage.life && p.x > -20 && p.x < CONFIG.view.w + 20);
+    this.papers = this.papers.filter((p) => !p.dead && p.t < C.barrage.life && p.x > -20 && p.x < CONFIG.view.w + 20);
   }
 
   // ---------- main update ----------
@@ -68,6 +117,7 @@ export class Zee {
     this.t += dt;
     for (const k of Object.keys(this.cd)) this.cd[k] = Math.max(0, this.cd[k] - dt);
     this.invuln = Math.max(0, this.invuln - dt);
+    this.flash = Math.max(0, this.flash - dt);
     const actions = input.consume();
     this._updatePapers(dt);
     if (this.viewer) { this._viewer(); return; }
@@ -80,6 +130,8 @@ export class Zee {
       case 'jump': this._jump(dt, input, actions); break;
       case 'dodge': this._dodge(dt); break;
       case 'hurt': this._hurt(dt); break;
+      case 'held': this._held(dt, input, actions); break;
+      case 'thrown': this._thrown(dt); break;
       case 'down': this._down(dt); break;
       case 'getup': if (this.done) this._enter('idle'); break;
       case 'defeat': break;
@@ -118,6 +170,7 @@ export class Zee {
   // ---------- state transitions ----------
   _enter(state, anim) {
     this.state = state; this.phase = ''; this.queued = false; this.idleTime = 0;
+    if (state === 'attack') this.attackId++;
     if (state === 'idle') this._play('idle');
     else if (anim) this._play(anim);
   }
@@ -131,8 +184,9 @@ export class Zee {
   }
 
   takeHit(dmg, dir = -this.face) {
-    if (this.invuln > 0 || this.state === 'defeat' || this.state === 'down' || this.state === 'getup') return false;
+    if (this.invuln > 0 || ['defeat', 'down', 'getup', 'held', 'thrown'].includes(this.state)) return false;
     this.hp = Math.max(0, this.hp - dmg);
+    this.flash = 0.22;
     this.invuln = C.invulnerabilityAfterHit;
     this.vx = dir * 90;
     if (this.hp <= 0) { this._knockdown(dir, true); return true; }
@@ -226,7 +280,7 @@ export class Zee {
       const speed = (input.run ? C.runSpeed : C.walkSpeed) * C.airControl;
       this.x += a.x * speed * dt; this.y += a.y * speed * C.depthSpeedFactor * dt * 0.7;
       if (Math.abs(a.x) > 0.05) this.face = a.x > 0 ? 1 : -1;
-      if (actions.includes('light') && !this.airKick) { this.airKick = true; this._play('jump_kick'); }
+      if (actions.includes('light') && !this.airKick) { this.airKick = true; this.attackId++; this._play('jump_kick'); }
       if (!this.airKick) {
         const want = this.vz > 0 ? 'jump_rise' : 'jump_fall';
         if (this.animName !== want) this._play(want);
@@ -299,8 +353,8 @@ export class Zee {
       drawAnim(ctx, this.character, s.anim, s.frame, x, y - lift, this.face, 0.32 * (1 - s.t / SMEAR_TIME));
     }
     // flicker while invulnerable after a hit
-    if (!(this.invuln > 0 && this.state !== 'dodge' && Math.floor(this.invuln * 18) % 2 === 0)) {
-      drawAnim(ctx, this.character, this.anim, this.frame, x, y - lift, this.face);
+    if (this.flash > 0 || !(this.invuln > 0 && this.state !== 'dodge' && Math.floor(this.invuln * 18) % 2 === 0)) {
+      drawAnim(ctx, this.character, this.anim, this.frame, x, y - lift, this.face, 1, this.flash * 6);
     }
     this._drawPapers(ctx);
   }

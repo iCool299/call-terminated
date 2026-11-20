@@ -1,0 +1,114 @@
+{
+    "character":  "polo",
+    "grab":  false,
+    "gameHeight":  112,
+    "cell":  {
+                 "w":  352,
+                 "h":  272
+             },
+    "anchor":  {
+                   "x":  176,
+                   "y":  248
+               },
+    "drawScale":  0.5,
+    "facing":  "right",
+    "strips":  {
+                   "a":  {
+                             "file":  "polo_a.png",
+                             "frames":  16,
+                             "cols":  8
+                         },
+                   "b":  {
+                             "file":  "polo_b.png",
+                             "frames":  16,
+                             "cols":  8
+                         },
+                   "c":  {
+                             "file":  "polo_c.png",
+                             "frames":  16,
+                             "cols":  8
+                         },
+                   "d":  {
+                             "file":  "polo_d.png",
+                             "frames":  16,
+                             "cols":  8
+                         }
+               },
+    "animations":  {
+                       "idle":  {
+                                    "strip":  "a",
+                                    "from":  0,
+                                    "to":  7,
+                                    "fps":  8,
+                                    "loop":  true
+                                },
+                       "walk":  {
+                                    "strip":  "a",
+                                    "from":  8,
+                                    "to":  15,
+                                    "fps":  12,
+                                    "loop":  true
+                                },
+                       "punch":  {
+                                     "strip":  "b",
+                                     "from":  0,
+                                     "to":  7,
+                                     "fps":  22,
+                                     "loop":  false,
+                                     "active":  [
+                                                    3,
+                                                    4
+                                                ]
+                                 },
+                       "kick":  {
+                                    "strip":  "b",
+                                    "from":  8,
+                                    "to":  15,
+                                    "fps":  22,
+                                    "loop":  false,
+                                    "active":  [
+                                                   3,
+                                                   4
+                                               ]
+                                },
+                       "hurt":  {
+                                    "strip":  "c",
+                                    "from":  0,
+                                    "to":  3,
+                                    "fps":  14,
+                                    "loop":  false
+                                },
+                       "knockdown":  {
+                                         "strip":  "c",
+                                         "from":  4,
+                                         "to":  9,
+                                         "fps":  14,
+                                         "loop":  false
+                                     },
+                       "get_up":  {
+                                      "strip":  "c",
+                                      "from":  10,
+                                      "to":  15,
+                                      "fps":  12,
+                                      "loop":  false
+                                  },
+                       "defeat":  {
+                                      "strip":  "d",
+                                      "from":  0,
+                                      "to":  7,
+                                      "fps":  10,
+                                      "loop":  false
+                                  },
+                       "throw_headset":  {
+                                             "strip":  "d",
+                                             "from":  8,
+                                             "to":  15,
+                                             "fps":  18,
+                                             "loop":  false,
+                                             "release":  [
+                                                             3,
+                                                             4
+                                                         ]
+                                         }
+                   }
+}

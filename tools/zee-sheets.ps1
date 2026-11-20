@@ -17,6 +17,7 @@ $sheets = @(
     (Cfg 'get_up'      'get_up_v2.png'      12 3 323),
     (Cfg 'defeat'      'defeat_v2.png'      12 3 323),
     (Cfg 'victory'     'victory_v2.png'     12 3 323),
-    (Cfg 'interact'    'interact_v2.png'     8 2 387)
+    (Cfg 'interact'    'interact_v2.png'     8 2 387),
+    (Cfg 'grabbed'     'grabbed_v1.png'     16 4 -1)    # frame 1 = neutral standing (scale calibration only); 2-9 held, 10-16 thrown
 )
 
