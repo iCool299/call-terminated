@@ -110,7 +110,7 @@
                                            "strip":  "idle_makeup",
                                            "from":  0,
                                            "to":  15,
-                                           "fps":  12,
+                                           "fps":  6.5,
                                            "loop":  false
                                        },
                        "walk":  {

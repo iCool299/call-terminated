@@ -2,7 +2,7 @@
 # 'active' = frames that can hit, 'iframes' = invulnerable frames, loopFrom = frame a looping animation returns to.
 $anims = @(
     @{ name='idle';        strip='idle';        from=0; to=11; fps=10; loop=$true },
-    @{ name='idle_makeup'; strip='idle_makeup'; from=0; to=15; fps=12; loop=$false },
+    @{ name='idle_makeup'; strip='idle_makeup'; from=0; to=15; fps=6.5; loop=$false },
     @{ name='walk';        strip='walk';        from=0; to=11; fps=12; loop=$true },
     @{ name='run';         strip='run';         from=0; to=11; fps=22; loop=$true },
     @{ name='jump_start';  strip='jump';        from=0; to=2;  fps=30; loop=$false },

@@ -1,8 +1,8 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611201956';
-import { loadCharacter, VERSION } from './assets.js?v=202611201956';
-import { Input } from './input.js?v=202611201956';
-import { Zee } from './zee.js?v=202611201956';
+import { CONFIG } from './config.js?v=202611202013';
+import { loadCharacter, VERSION } from './assets.js?v=202611202013';
+import { Input } from './input.js?v=202611202013';
+import { Zee } from './zee.js?v=202611202013';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');

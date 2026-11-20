@@ -17,7 +17,7 @@ export const CONFIG = {
     dodgeDistance: 120,
     dodgeCooldown: 0.65,
     specialCooldown: 30.0,             // Printout Barrage recharges every 30 s
-    makeupIdleDelay: 6.0,              // seconds standing still before the makeup idle plays
+    makeupIdleDelay: 2.5,             // seconds standing still before the makeup idle plays
     invulnerabilityAfterHit: 0.9,
     knockdownHold: 0.7,                // seconds lying on the floor before getting up
     // forward step (px) during the swing of each attack
