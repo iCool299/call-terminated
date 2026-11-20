@@ -53,7 +53,7 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
 // ---------- touch UI ----------
 const isTouch = matchMedia('(pointer: coarse)').matches || new URLSearchParams(location.search).has('touch');
 document.body.classList.toggle('touch', isTouch);
-const cdButtons = { heavy: $('btn-heavy'), special: $('btn-special'), dodge: $('btn-dodge') };
+const cdButtons = { special: $('btn-special'), dodge: $('btn-dodge') };
 
 // ---------- pause ----------
 function setPaused(p) { paused = p; $('pause-screen').hidden = !p; }
@@ -118,7 +118,7 @@ function drawHud() {
 const cdCache = {};
 function updateButtons() {       // only touch the DOM when a value actually changed (style writes are expensive on phones)
   for (const [name, el] of Object.entries(cdButtons)) {
-    const total = { heavy: CONFIG.zee.heavyCooldown, special: CONFIG.zee.specialCooldown, dodge: CONFIG.zee.dodgeCooldown }[name];
+    const total = { special: CONFIG.zee.specialCooldown, dodge: CONFIG.zee.dodgeCooldown }[name];
     const left = zee.cd[name] / total;
     const deg = Math.round(left * 120) * 3;     // 3-degree steps
     if (cdCache[name] === deg) continue;
@@ -155,7 +155,7 @@ function frame(now) {
 
 (async function boot() {
   try {
-    character = await loadCharacter('assets/characters/zee/');
+    character = await loadCharacter('assets/characters/zee_v2/');
     zee = new Zee(character, W / 2, 292);
     buildViewer();
     $('loading').remove();

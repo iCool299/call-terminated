@@ -36,16 +36,20 @@ export class Input {
       return null;
     };
     const prevent = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ']);
+    // Letters are normalised to lower case: with Shift held the browser reports 'D' on press but 'd' on release
+    // if Shift was let go first, which used to leave a "stuck" key and make Zee keep walking by herself.
+    const norm = (k) => (k.length === 1 ? k.toLowerCase() : k);
     addEventListener('keydown', (e) => {
       if (e.target && /input|select|textarea/i.test(e.target.tagName)) return;
       this.lastDevice = 'keyboard';
       if (prevent.has(e.key)) e.preventDefault();
       if (e.repeat) return;
-      this.keys.add(e.key);
-      const action = actionFor(e.key);
+      const k = norm(e.key);
+      this.keys.add(k);
+      const action = actionFor(k);
       if (action) this.push(action);
     });
-    addEventListener('keyup', (e) => { this.keys.delete(e.key); });
+    addEventListener('keyup', (e) => { this.keys.delete(norm(e.key)); });
     addEventListener('blur', () => { this.keys.clear(); this.touchAxis = { x: 0, y: 0 }; });
   }
 

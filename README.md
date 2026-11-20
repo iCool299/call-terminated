@@ -15,10 +15,9 @@ Add `?touch=1` to force the touch controls on a desktop browser.
 |---|---|---|
 | Move / run | WASD or arrows, Shift to run | drag on the left half (push far to run) |
 | Light attack (3-hit combo) | J | HIT |
-| Heavy attack | K | HEAVY |
 | Dodge roll | L | DODGE |
 | Jump (+ HIT in the air = jump kick) | I | JUMP |
-| Special (Red Pen, 6 s cooldown) | Space | SPECIAL |
+| Special (Printout Barrage, 30 s cooldown) | Space | SPECIAL |
 | Pause | Esc | pause button |
 
 Dev keys: `1` hurt, `2` knockdown, `3` defeat, `4` victory, `E` interact, `R` revive. The "Animations" button opens a viewer for every animation.

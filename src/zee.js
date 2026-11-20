@@ -14,7 +14,9 @@ export class Zee {
     this.face = 1;
     this.hp = C.maxHp;
     this.invuln = 0;
-    this.cd = { heavy: 0, special: 0, dodge: 0 };
+    this.cd = { special: 0, dodge: 0 };
+    this.papers = [];             // Printout Barrage projectiles
+    this.barrageFrame = -1;
     this.state = 'idle';
     this.idleTime = 0;
     this.queued = false;
@@ -27,7 +29,23 @@ export class Zee {
   _play(name) { this.anim = this.anims[name]; this.animName = name; this.t = 0; }
   get frame() { return frameAt(this.anim, this.t); }
   get done() { return this.t >= this.anim.duration; }
-  get cooldowns() { return { heavy: C.heavyCooldown, special: C.specialCooldown, dodge: C.dodgeCooldown }; }
+  get cooldowns() { return { special: C.specialCooldown, dodge: C.dodgeCooldown }; }
+
+  // ---------- Printout Barrage ----------
+  _fire() {
+    const B = C.barrage;
+    for (let i = 0; i < B.perFrame; i++) {
+      this.papers.push({
+        x: this.x + this.face * 34, y: this.y, z: 70 + Math.random() * 22 - 8,
+        vx: this.face * (B.speed + Math.random() * 60), vz: (Math.random() - 0.5) * B.spread,
+        spin: Math.random() * 6.28, t: 0,
+      });
+    }
+  }
+  _updatePapers(dt) {
+    for (const p of this.papers) { p.t += dt; p.x += p.vx * dt; p.z += p.vz * dt; p.spin += dt * 14; }
+    this.papers = this.papers.filter((p) => p.t < C.barrage.life && p.x > -20 && p.x < CONFIG.view.w + 20);
+  }
 
   // ---------- main update ----------
   update(dt, input, bounds) {
@@ -35,6 +53,7 @@ export class Zee {
     for (const k of Object.keys(this.cd)) this.cd[k] = Math.max(0, this.cd[k] - dt);
     this.invuln = Math.max(0, this.invuln - dt);
     const actions = input.consume();
+    this._updatePapers(dt);
     if (this.viewer) { this._viewer(); return; }
 
     for (const a of actions) this._dev(a);
@@ -98,7 +117,6 @@ export class Zee {
     for (const act of actions) {
       if (act === 'jump') return this._startJump();
       if (act === 'light') return this._startAttack('punch_1', a);
-      if (act === 'heavy' && this.cd.heavy <= 0) { this.cd.heavy = C.heavyCooldown; return this._startAttack('heavy', a); }
       if (act === 'special' && this.cd.special <= 0) { this.cd.special = C.specialCooldown; return this._startAttack('special', a); }
       if (act === 'dodge' && this.cd.dodge <= 0) return this._startDodge(a);
       if (act === 'interact') return this._enter('interact', 'interact');
@@ -134,6 +152,10 @@ export class Zee {
     const name = this.animName;
     const f = this.frame;
     const lastActive = this.anim.active.length ? Math.max(...this.anim.active) : this.anim.frames - 1;
+    // Printout Barrage: spit out paper on every hit frame of the special
+    if (name === 'special') {
+      if (this.anim.active.includes(f) && this.barrageFrame !== f) { this.barrageFrame = f; this._fire(); }
+    } else this.barrageFrame = -1;
     // chain the light combo: punch_1 -> punch_2 -> punch_3
     if (actions.includes('light') && (name === 'punch_1' || name === 'punch_2')) this.queued = true;
     // forward step while swinging
@@ -229,7 +251,22 @@ export class Zee {
     ctx.fillStyle = `rgba(0,0,0,${Math.max(0.12, 0.32 - lift * 0.003)})`;
     ctx.beginPath(); ctx.ellipse(x, y + 1, 26 - lift * 0.12, 6 - lift * 0.03, 0, 0, Math.PI * 2); ctx.fill();
     // flicker while invulnerable after a hit
-    if (this.invuln > 0 && this.state !== 'dodge' && Math.floor(this.invuln * 18) % 2 === 0) return;
-    drawAnim(ctx, this.character, this.anim, this.frame, x, y - lift, this.face);
+    if (!(this.invuln > 0 && this.state !== 'dodge' && Math.floor(this.invuln * 18) % 2 === 0)) {
+      drawAnim(ctx, this.character, this.anim, this.frame, x, y - lift, this.face);
+    }
+    this._drawPapers(ctx);
+  }
+
+  _drawPapers(ctx) {
+    for (const p of this.papers) {
+      const fade = Math.min(1, (C.barrage.life - p.t) * 5);
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.translate(p.x, p.y - p.z); ctx.rotate(Math.sin(p.spin) * 0.5);
+      ctx.fillStyle = '#10101a'; ctx.fillRect(-6, -4, 12, 9);              // outline
+      ctx.fillStyle = '#f4f1ea'; ctx.fillRect(-5, -3, 10, 7);              // sheet
+      ctx.fillStyle = '#9aa0b4'; ctx.fillRect(-3, -1, 6, 1); ctx.fillRect(-3, 1, 5, 1);   // text lines
+      ctx.restore();
+    }
   }
 }

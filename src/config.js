@@ -5,26 +5,27 @@ export const CONFIG = {
 
   zee: {
     maxHp: 100,
-    walkSpeed: 62,                     // px/sec
-    runSpeed: 128,
+    walkSpeed: 110,                    // px/sec (game is 640 wide, so a walk crosses the screen in ~6 s)
+    runSpeed: 220,
     depthSpeedFactor: 0.62,            // vertical (depth) movement is slower than sideways
     runThreshold: 0.82,                // touch joystick push needed to run
-    jumpStartTime: 0.14,               // crouch before leaving the ground
+    jumpStartTime: 0.16,              // crouch before leaving the ground
     jumpVelocity: 250,
     gravity: 760,
     airControl: 0.85,
     dodgeDistance: 120,
     dodgeCooldown: 0.65,
-    heavyCooldown: 0.9,
-    specialCooldown: 6.0,
+    specialCooldown: 30.0,             // Printout Barrage recharges every 30 s
     makeupIdleDelay: 6.0,              // seconds standing still before the makeup idle plays
     invulnerabilityAfterHit: 0.9,
     knockdownHold: 0.7,                // seconds lying on the floor before getting up
     // forward step (px) during the swing of each attack
-    lunge: { punch_1: 22, punch_2: 26, punch_3: 40, heavy: 34, special: 16, jump_kick: 0 },
+    lunge: { punch_1: 22, punch_2: 26, punch_3: 40, special: 0, jump_kick: 0 },
+    // Printout Barrage: sheets of paper fired forward during the special's hit frames
+    barrage: { speed: 330, life: 0.9, perFrame: 2, spread: 22, damage: 12 },
   },
 
-  windupSpeed: 1.6,        // wind-up frames (before the first hit frame) play this much faster
+  windupSpeed: 1.4,       // wind-up frames (before the first hit frame) play this much faster
   simStep: 1 / 120,        // fixed logic step (seconds); rendering runs at the display refresh rate
 
   keys: {
@@ -34,7 +35,6 @@ export const CONFIG = {
     down:    ['ArrowDown', 's', 'S'],
     run:     ['Shift'],
     light:   ['j', 'J'],
-    heavy:   ['k', 'K'],
     dodge:   ['l', 'L'],
     special: [' '],
     jump:    ['i', 'I'],

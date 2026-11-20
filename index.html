@@ -40,10 +40,9 @@
   #pad button.down { background:#ff8a5ccc; transform:scale(.94); }
   #pad button::after { content:""; position:absolute; inset:0; border-radius:50%; background:conic-gradient(#000a var(--cd,0deg), transparent 0); pointer-events:none; }
   #btn-light  { right:6px;   bottom:6px;   width:92px; height:92px; font-size:15px; }
-  #btn-heavy  { right:108px; bottom:12px;  width:70px; height:70px; }
   #btn-jump   { right:14px;  bottom:108px; width:70px; height:70px; }
-  #btn-dodge  { right:96px;  bottom:98px;  width:64px; height:64px; }
-  #btn-special{ right:172px; bottom:80px;  width:64px; height:64px; border-color:#ff8a5c; }
+  #btn-dodge  { right:112px; bottom:22px;  width:70px; height:70px; }
+  #btn-special{ right:110px; bottom:108px; width:70px; height:70px; border-color:#ff8a5c; }
   #btn-special.cooling { border-color:#ffffff44; }
 
   /* panels */
@@ -68,7 +67,7 @@
 <div id="stage"><canvas id="game"></canvas></div>
 
 <div id="readout" class="chip">loading...</div>
-<div id="hints" class="chip">Move <b>WASD</b>/<b>Arrows</b> &middot; Run <b>Shift</b> &middot; Hit <b>J</b> (x3 combo) &middot; Heavy <b>K</b> &middot; Dodge <b>L</b> &middot; Jump <b>I</b> &middot; Special <b>Space</b> &middot; Pause <b>Esc</b></div>
+<div id="hints" class="chip">Move <b>WASD</b>/<b>Arrows</b> &middot; Run <b>Shift</b> &middot; Hit <b>J</b> (x3 combo) &middot; Dodge <b>L</b> &middot; Jump <b>I</b> &middot; Special <b>Space</b> &middot; Pause <b>Esc</b></div>
 <button id="btn-viewer" class="ui">Animations</button>
 <button id="btn-pause" class="ui" aria-label="Pause">&#10074;&#10074;</button>
 
@@ -85,7 +84,6 @@
   <div id="stick"><div id="stick-knob"></div></div>
   <div id="pad">
     <button id="btn-light"   data-action="light">HIT</button>
-    <button id="btn-heavy"   data-action="heavy">HEAVY</button>
     <button id="btn-jump"    data-action="jump">JUMP</button>
     <button id="btn-dodge"   data-action="dodge">DODGE</button>
     <button id="btn-special" data-action="special">SPECIAL</button>
@@ -95,8 +93,8 @@
 <div id="pause-screen" hidden>
   <div class="card">
     <h2>Paused</h2>
-    <p>Keyboard: WASD / arrows move, Shift run, J hit (tap 3x for the combo), K heavy, L dodge, I jump, Space special, Esc pause.</p>
-    <p>Touch: drag on the left to move (push far to run). Buttons on the right: HIT, HEAVY, JUMP, DODGE, SPECIAL.</p>
+    <p>Keyboard: WASD / arrows move, Shift run, J hit (tap 3x for the combo), L dodge, I jump, Space special (Printout Barrage, 30 s recharge), Esc pause.</p>
+    <p>Touch: drag on the left to move (push far to run). Buttons on the right: HIT, JUMP, DODGE, SPECIAL.</p>
     <button id="resume" class="ui">Resume</button>
   </div>
 </div>

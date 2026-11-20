@@ -1,5 +1,6 @@
 # Builds Zee's game-ready strips + manifest from the generated green-screen sheets in sprites/zee/raw.
 # Usage: powershell -ExecutionPolicy Bypass -File tools\build-zee.ps1
+param([string]$Suffix = '')      # '' = original build, '-v2' = the higher frame-count redo (outputs to assets\characters\zee_v2)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Add-Type -ReferencedAssemblies System.Drawing -Path (Join-Path $PSScriptRoot 'ZeePipeline.cs')
@@ -10,17 +11,19 @@ function Cfg($name, $file, $n, $rows, $standH) {
     return $c
 }
 
-. (Join-Path $PSScriptRoot 'zee-sheets.ps1')
-. (Join-Path $PSScriptRoot 'zee-anims.ps1')
+. (Join-Path $PSScriptRoot "zee-sheets$Suffix.ps1")
+. (Join-Path $PSScriptRoot "zee-anims$Suffix.ps1")
 
 # Extra palette colors for props that are not on the master (compact mirror, lipstick, red pen, scorecard stars).
-$extras = @(0xC98B8B, 0x9E6670, 0xE6B5B0, 0x8A3F4A, 0xD13438, 0x8F1D22, 0xF5C542, 0xC99A2E)
+$extras = @(0xC98B8B, 0x9E6670, 0xE6B5B0, 0x8A3F4A, 0xF5C542, 0xC99A2E)   # no reds: they pulled drifting hijab pixels toward red
 $master = Join-Path $root 'sprites\zee\master\zee_master_idle_v1.png'
-$out = Join-Path $root 'assets\characters\zee'
+$outName = 'zee' + ($Suffix -replace '-', '_')
+$out = Join-Path $root "assets\characters\$outName"
 $dbg = Join-Path $root 'tools\debug'
 New-Item -ItemType Directory -Force $dbg | Out-Null
-$log = [Zee2.Pipe]::Run($root, $master, $out, (Join-Path $dbg 'zee-sheet.png'), $sheets, 28, $extras)
-$log | Out-File (Join-Path $dbg 'zee-build.log') -Encoding utf8
+New-Item -ItemType Directory -Force $out | Out-Null
+$log = [Zee2.Pipe]::Run($root, $master, $out, (Join-Path $dbg "zee-sheet$Suffix.png"), $sheets, 28, $extras)
+$log | Out-File (Join-Path $dbg "zee-build$Suffix.log") -Encoding utf8
 
 # Manifest
 $strips = [ordered]@{}
