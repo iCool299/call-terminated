@@ -131,28 +131,28 @@
                                           "strip":  "jump",
                                           "from":  0,
                                           "to":  2,
-                                          "fps":  18,
+                                          "fps":  30,
                                           "loop":  false
                                       },
                        "jump_rise":  {
                                          "strip":  "jump",
                                          "from":  3,
                                          "to":  5,
-                                         "fps":  14,
+                                         "fps":  15,
                                          "loop":  false
                                      },
                        "jump_fall":  {
                                          "strip":  "jump",
                                          "from":  6,
                                          "to":  8,
-                                         "fps":  14,
+                                         "fps":  15,
                                          "loop":  false
                                      },
                        "jump_land":  {
                                          "strip":  "jump",
                                          "from":  9,
                                          "to":  11,
-                                         "fps":  18,
+                                         "fps":  26,
                                          "loop":  false
                                      },
                        "punch_1":  {

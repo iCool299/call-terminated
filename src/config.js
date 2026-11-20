@@ -9,9 +9,9 @@ export const CONFIG = {
     runSpeed: 220,
     depthSpeedFactor: 0.62,            // vertical (depth) movement is slower than sideways
     runThreshold: 0.82,                // touch joystick push needed to run
-    jumpStartTime: 0.16,              // crouch before leaving the ground
-    jumpVelocity: 250,
-    gravity: 760,
+    jumpStartTime: 0.10,              // crouch before leaving the ground
+    jumpVelocity: 350,                // snappy jump: same ~40 px height as before, but in 0.47 s of air time instead of 0.66 s
+    gravity: 1500,
     airControl: 0.85,
     dodgeDistance: 120,
     dodgeCooldown: 0.65,
