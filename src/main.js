@@ -1,11 +1,11 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611211640';
-import { loadCharacter, VERSION } from './assets.js?v=202611211640';
-import { Input } from './input.js?v=202611211640';
-import { Zee } from './zee.js?v=202611211640';
-import { Game } from './game.js?v=202611211640';
-import { ENEMY_IDS } from './enemy.js?v=202611211640';
-import { unlock } from './sfx.js?v=202611211640';
+import { CONFIG } from './config.js?v=202611211653';
+import { loadCharacter, VERSION } from './assets.js?v=202611211653';
+import { Input } from './input.js?v=202611211653';
+import { Zee } from './zee.js?v=202611211653';
+import { Game } from './game.js?v=202611211653';
+import { ENEMY_IDS } from './enemy.js?v=202611211653';
+import { unlock } from './sfx.js?v=202611211653';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -162,6 +162,50 @@ function setupSpawner() {
   window.__spawn = (id) => enemyChar(id).then((c) => game.spawn(id, c));
 }
 
+// ---------- game modes: Battle (default) / Animation test ----------
+function setupModes() {
+  const tgt = $('t-target'), anims = $('t-anims'), spd = $('t-speed');
+  const chip = (parent, label, on, fn) => { const b = document.createElement('button'); b.textContent = label; b.addEventListener('click', () => { fn(b); }); parent.appendChild(b); return b; };
+  const mark = (parent, b) => parent.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+  const targets = {};
+  targets.all = chip(tgt, 'all', true, (b) => { game.test.target = 'all'; mark(tgt, b); });
+  targets.all.classList.add('on');
+  for (const id of ENEMY_IDS) targets[id] = chip(tgt, id, false, (b) => { game.test.target = id; mark(tgt, b); });
+  for (const s of [0.1, 0.25, 0.5, 1]) { const b = chip(spd, s + 'x', s === 1, (bb) => { game.test.speed = s; mark(spd, bb); }); if (s === 1) b.classList.add('on'); }
+  $('t-pause').addEventListener('click', () => { game.test.paused = !game.test.paused; $('t-pause').textContent = game.test.paused ? 'Play' : 'Pause'; });
+  $('t-prev').addEventListener('click', () => { game.test.paused = true; $('t-pause').textContent = 'Play'; game.test.step = -1; });
+  $('t-next').addEventListener('click', () => { game.test.paused = true; $('t-pause').textContent = 'Play'; game.test.step = 1; });
+  $('t-flip').addEventListener('click', () => { for (const e of game.enemies) e.face *= -1; });
+  $('t-reset').addEventListener('click', () => enterTest());
+  let animBtns = [];
+  async function enterTest() {
+    const chars = [];
+    for (const id of ENEMY_IDS) chars.push([id, await enemyChar(id)]);
+    game.enterTest(chars);
+    const names = [];                                       // every animation any enemy has, in a sensible order
+    const order = ['idle', 'walk', 'punch', 'kick', 'throw_headset', 'hurt', 'knockdown', 'get_up', 'defeat', 'grab', 'hold', 'throw'];
+    for (const [, c] of chars) for (const n of Object.keys(c.anims)) if (!names.includes(n)) names.push(n);
+    names.sort((a, b) => (order.indexOf(a) + 99) % 99 - (order.indexOf(b) + 99) % 99);
+    anims.textContent = ''; animBtns = [];
+    for (const n of names) {
+      const b = chip(anims, n, false, () => { game.testSet(n); mark(anims, b); });
+      b.title = chars.filter(([, c]) => c.anims[n]).map(([id]) => id).join(', '); animBtns.push(b);
+    }
+    mark(anims, animBtns[0]);
+    $('t-pause').textContent = 'Pause';
+  }
+  function setMode(test) {
+    document.body.classList.toggle('testmode', test);
+    $('btn-mode').innerHTML = test ? 'Mode: Animation test &#8644;' : 'Mode: Battle &#8644;';
+    history.replaceState(null, '', test ? '?mode=test' : location.pathname);
+    if (test) enterTest(); else { game.exitTest(); zee.x = W / 2; zee.y = 292; }
+  }
+  $('btn-mode').addEventListener('click', () => setMode(!game.test));
+  $('btn-mode').tabIndex = -1;
+  if (new URLSearchParams(location.search).get('mode') === 'test') setMode(true);
+  window.__test = { set: (n, t) => game.testSet(n, t), state: () => game.test, enemies: () => game.enemies.map((e) => ({ id: e.id, anim: e.animName, frame: e.frame, frames: e.anim.frames, face: e.face })) };
+}
+
 // ---------- loop ----------
 // Logic runs on a fixed 120 Hz step (same behaviour on any device); drawing runs every display refresh
 // and interpolates between logic steps, so 60 / 90 / 120 / 144 Hz screens all look smooth.
@@ -200,6 +244,7 @@ function frame(now) {
     game = new Game(zee, bounds);
     buildViewer();
     setupSpawner();
+    setupModes();
     $('loading').remove();
     requestAnimationFrame((t) => { last = t; frame(t); });
     window.__zee = zee; window.__input = input; window.__game = game;     // handy for debugging in the console

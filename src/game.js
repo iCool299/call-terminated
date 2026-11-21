@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611211640';
-import { Enemy } from './enemy.js?v=202611211640';
-import { SOFT } from './zee.js?v=202611211640';
-import { sfx } from './sfx.js?v=202611211640';
+import { CONFIG } from './config.js?v=202611211653';
+import { Enemy } from './enemy.js?v=202611211653';
+import { SOFT } from './zee.js?v=202611211653';
+import { sfx } from './sfx.js?v=202611211653';
 
 const E = CONFIG.enemy;
 
@@ -12,6 +12,23 @@ export class Game {
     this.enemies = []; this.shots = []; this.parts = []; this.texts = [];
     this.hitstop = 0; this.shake = 0; this.combo = 0; this.comboT = 0; this.kos = 0;
     this.reviveT = 0;
+    this.test = null;                                  // animation test mode state (null = normal battle)
+  }
+
+  // Animation test mode: every enemy stands in front of Zee, nobody attacks; the page's test panel picks what they play.
+  enterTest(chars) {
+    this.test = { speed: 1, paused: false, step: 0, target: 'all', face: -1 };
+    this.enemies = []; this.shots = []; this.parts = []; this.texts = [];
+    const z = this.zee; z.x = 54; z.y = 292; z.face = 1; z.hp = CONFIG.zee.maxHp; z.z = 0;
+    chars.forEach(([id, c], i) => {
+      const e = new Enemy(id, c, 150 + i * 64, i % 2 ? 314 : 270);
+      e.face = -1; e.spawnT = 0; e.hp = e.maxHp;
+      e.testPlay('idle'); e.snapshot(); this.enemies.push(e);
+    });
+  }
+  exitTest() { this.test = null; this.enemies = []; this.shots = []; }
+  testSet(name, target = this.test.target) {
+    let n = 0; for (const e of this.enemies) if ((target === 'all' || e.id === target) && e.testPlay(name)) n++; return n;
   }
 
   snapshot() { this.zee.snapshot(); for (const e of this.enemies) e.snapshot(); }
@@ -104,6 +121,11 @@ export class Game {
         this.shake = 9; this.hitstop = Math.max(this.hitstop, 0.11); sfx.thud(); try { navigator.vibrate && navigator.vibrate(50); } catch (e) { /* ok */ }
       } else if (ev.type === 'escape') { this._text(z.x, z.y, 90, 'FREE!', '#8be28b'); sfx.hit(0.7); }
     }
+    if (this.test) {
+      const T = this.test;
+      for (const e of this.enemies) { e.testUpdate(dt, T); e.snapshot(); }
+      T.step = 0; return;
+    }
     for (const e of this.enemies) e.update(dt, this);
     this._zeeAttacks(); this._papers(); this._shots(dt);
     this.enemies = this.enemies.filter((e) => !e.remove);
@@ -151,6 +173,14 @@ export class Game {
       const yy = t.y - t.z - t.t * 34; ctx.strokeText(t.text, t.x, yy); ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, yy);
     }
     ctx.globalAlpha = 1; ctx.textAlign = 'left';
+    if (this.test) {                                           // labels under every enemy: id, animation, frame
+      ctx.font = 'bold 7px ui-monospace, Consolas, monospace'; ctx.textAlign = 'center'; ctx.lineWidth = 2; ctx.strokeStyle = '#10101a';
+      for (const e of this.enemies) {
+        const t = `${e.id} ${e.animName} ${e.frame + 1}/${e.anim.frames}`;
+        ctx.strokeText(t, e.x, e.y + 10); ctx.fillStyle = '#ffd9c7'; ctx.fillText(t, e.x, e.y + 10);
+      }
+      ctx.textAlign = 'left';
+    }
   }
 
   _drawShots(ctx) {
