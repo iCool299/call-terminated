@@ -35,7 +35,7 @@
     },
     "w": {
       "file": "curvy_w.png",
-      "frames": 24,
+      "frames": 12,
       "cols": 8
     }
   },
@@ -50,8 +50,8 @@
     "walk": {
       "strip": "w",
       "from": 0,
-      "to": 23,
-      "fps": 28.0,
+      "to": 11,
+      "fps": 24,
       "loop": true
     },
     "punch": {

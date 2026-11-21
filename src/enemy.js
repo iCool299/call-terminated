@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611211629';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211629';
-import { SOFT } from './zee.js?v=202611211629';
+import { CONFIG } from './config.js?v=202611211640';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211640';
+import { SOFT } from './zee.js?v=202611211640';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -15,6 +15,21 @@ export const ENEMY_IDS = ['navy', 'polo', 'plum', 'cream', 'fighter', 'gangly', 
 // The grabbers' animation sheet is drawn WITH Zee in it (so the two are always perfectly in sync). These numbers line the real Zee up
 // with it: CLAMP_DX = how far in front of the grabber Zee stands in the clamp frame; RELEASE = where she leaves his hands (px in front
 // of his feet, px above the ground) when the throw releases.
+// Each enemy walks in its own way. step = length of one step as a share of its height (the walk cycle is advanced by the distance it
+// actually covers, so feet never skate), speed = walking-pace multiplier, lean = forward tilt (radians), bounce = extra lift at mid-step (px),
+// sway = side-to-side body roll (radians), turn = seconds to commit to a new facing after changing direction.
+const WALK_STYLE = {
+  navy:    { step: 0.56, speed: 0.92, lean: 0.00, bounce: 0.6, sway: 0.010, turn: 0.14 },   // heavy and upright: slow, planted steps
+  sporty:  { step: 0.60, speed: 1.12, lean: 0.05, bounce: 1.5, sway: 0.012, turn: 0.08 },   // athletic: long bouncy strides, leans in
+  polo:    { step: 0.40, speed: 1.00, lean: 0.02, bounce: 1.3, sway: 0.030, turn: 0.10 },   // short and round: quick little steps, waddle
+  plum:    { step: 0.50, speed: 1.05, lean: 0.01, bounce: 0.7, sway: 0.008, turn: 0.09 },   // brisk and composed
+  cream:   { step: 0.52, speed: 0.98, lean: 0.02, bounce: 0.9, sway: 0.016, turn: 0.10 },   // casual stroll
+  fighter: { step: 0.55, speed: 1.15, lean: 0.07, bounce: 1.4, sway: 0.010, turn: 0.07 },   // aggressive: fast, leaning forward
+  gangly:  { step: 0.64, speed: 0.90, lean: 0.10, bounce: 0.5, sway: 0.028, turn: 0.15 },   // slouched and loose: long lazy strides
+  curvy:   { step: 0.48, speed: 1.00, lean: 0.00, bounce: 0.8, sway: 0.034, turn: 0.10 },   // confident swagger
+};
+const ACCEL = 560;                                                // px/s^2: enemies speed up and slow down instead of snapping
+
 const CLAMP_DX = { navy: 52, sporty: 48 };
 const RELEASE = { navy: { dx: 92, z: 78 }, sporty: { dx: 58, z: 46 } };
 
@@ -27,7 +42,10 @@ export class Enemy {
     this.hp = this.maxHp = this.heavy ? E.heavyHp : E.hp;
     this.dmgMul = this.heavy ? E.heavyDmgMul : 1;
     this.aggr = rnd(0.9, 1.25) * (this.heavy ? 1.1 : 1);              // how fast it recovers between attacks
-    this.speed = E.walkSpeed * rnd(0.95, 1.2) * (this.heavy ? 1.05 : 1);
+    this.style = WALK_STYLE[id] || WALK_STYLE.cream;
+    this.speed = E.walkSpeed * rnd(0.95, 1.2) * (this.heavy ? 1.05 : 1) * this.style.speed;
+    this.stepLen = this.style.step * (character.manifest.gameHeight || 140);      // px covered by one step (one pass through the walk loop)
+    this.vw = 0; this.vh = 0; this.turnT = 0; this.stride = 0; this.leanK = 0;                      // smoothed velocity, turn timer, walk phase 0..1 per step
     this.atkRate = this.heavy ? 1.12 : 1.1;                           // their swings are quicker than the raw animation
     this.evadeChance = this.heavy ? 0.12 : 0.4;
     this.prefersRange = !this.canGrab && Math.random() < 0.45;       // some enemies keep their distance and throw headsets
@@ -62,9 +80,11 @@ export class Enemy {
   }
 
   update(dt, g) {
-    const rate = this.animName === 'walk' ? 1.5 : (this.state === 'attack' ? this.atkRate : 1);    // walk loop = one step, played at the pace they walk
-    if (this.state !== 'whiff') this.t += dt * rate;
+    const rate = this.state === 'attack' ? this.atkRate : 1;
+    if (this.state !== 'whiff' && this.animName !== 'walk') this.t += dt * rate;   // the walk loop is advanced by distance walked (see _stride)
     this.flash = Math.max(0, this.flash - dt);
+    const tl = (this.state === 'walk' || this.state === 'evade') ? Math.min(1, Math.hypot(this.vw, this.vh) / Math.max(1, this.speed)) : 0;
+    this.leanK += (tl - this.leanK) * Math.min(1, dt * 9);        // eases the style in and out as it starts and stops walking
     this.barT = Math.max(0, this.barT - dt);
     this.hitCool = Math.max(0, this.hitCool - dt);
     switch (this.state) {
@@ -89,7 +109,29 @@ export class Enemy {
     this.y = Math.max(b.minY, Math.min(b.maxY, this.y));
   }
 
-  _back(cd) { this.state = 'idle'; this._play('idle'); this.cool = Math.max(this.cool, cd / this.aggr); }
+  // Advance the walk loop by the distance covered (negative = walking backwards): one step = one pass through the 12-frame loop.
+  _stride(d) {
+    const dur = this.anim.duration;
+    this.stride = (((this.stride + d / this.stepLen) % 1) + 1) % 1;
+    this.t = this.stride * dur;
+  }
+  // Ease the velocity toward a target (no sudden starts, stops or reversals).
+  _steer(tvx, tvy, dt) {
+    const a = ACCEL * dt, ex = tvx - this.vw, ey = tvy - this.vh, m = Math.hypot(ex, ey);
+    if (m <= a) { this.vw = tvx; this.vh = tvy; } else { this.vw += ex / m * a; this.vh += ey / m * a; }
+  }
+  // Which way to look: the way it is walking, never walking backwards at her. Standing still (or only closing in depth) it looks at her.
+  // A change of facing waits a moment (and for the body to slow down), so a turn-around reads as a real turn.
+  _facing(z, dt, moving) {
+    let want = this.face;
+    if (moving && Math.abs(this.vw) > 14) want = sgn(this.vw);
+    else if (Math.abs(z.x - this.x) > 5) want = z.x > this.x ? 1 : -1;
+    if (want === this.face) { this.turnT = 0; return; }
+    this.turnT += dt;
+    if (this.turnT >= this.style.turn) { this.face = want; this.turnT = 0; }
+  }
+
+  _back(cd) { this.state = 'idle'; this._play('idle'); this.vw = 0; this.vh = 0; this.cool = Math.max(this.cool, cd / this.aggr); }
   _faceZee(z) { if (Math.abs(z.x - this.x) > 5) this.face = z.x > this.x ? 1 : -1; }
 
   // ---------- on the move ----------
@@ -97,14 +139,13 @@ export class Enemy {
     const z = g.zee, dx = z.x - this.x, dy = z.y - this.y, adx = Math.abs(dx), ady = Math.abs(dy);
     this.cool -= dt * this.aggr;
     const calm = z.state === 'defeat';
-    if (!calm) this._faceZee(z);                                    // always looking at her: swings are never thrown the wrong way
     // she just whiffed or is stuck in a recovery: punish it
     if (z.state === 'attack' && z.anim.active.length && z.frame > Math.max(...z.anim.active) && adx < E.attackRange + 40) this.cool = Math.min(this.cool, 0.06);
     // she starts a swing next to me: maybe sidestep it, then counter
     if (!calm && z.state === 'attack' && z.attackId !== this.evadeId && adx < 78 && ady < 22 && z.anim.active.length && z.frame < Math.min(...z.anim.active)) {
       this.evadeId = z.attackId;
       if (Math.random() < this.evadeChance) {
-        this.state = 'evade'; this.evadeT = 0.28; this._play('walk');
+        this._faceZee(z); this.state = 'evade'; this.evadeT = 0.28; this._play('walk');
         this.mx = -sgn(dx) * 0.9; this.my = (ady > 6 ? -sgn(dy) : (Math.random() < 0.5 ? 1 : -1)) * 1.1; return;
       }
     }
@@ -131,18 +172,35 @@ export class Enemy {
         this.mx = mx; this.my = my;
       }
     }
-    if (this.mx || this.my) {
-      this.x += this.mx * this.speed * dt; this.y += this.my * this.speed * CONFIG.zee.depthSpeedFactor * dt * 1.15;
+    // ---- move (eased) ----
+    let tvx = this.mx * this.speed, tvy = this.my * this.speed * CONFIG.zee.depthSpeedFactor * 1.15;
+    if (!calm) {                                                     // don't stack on top of other enemies: nudge apart
+      for (const o of g.enemies) {
+        if (o === this || o.state === 'dead' || o.state === 'down') continue;
+        const ox = this.x - o.x, oy = this.y - o.y;
+        if (Math.abs(ox) < 30 && Math.abs(oy) < 12) { const k = 1 - Math.abs(ox) / 30; tvx += (ox === 0 ? (this.id < o.id ? 1 : -1) : sgn(ox)) * 70 * k; tvy += (oy === 0 ? 1 : sgn(oy)) * 40 * k; }
+      }
+    }
+    if (this.turnT > 0) { tvx *= 0.25; tvy *= 0.5; }                  // braking while it turns round
+    this._steer(tvx, tvy, dt);
+    const spd = Math.hypot(this.vw, this.vh), moving = spd > 8;
+    if (moving) {
+      const px = this.x, py = this.y;
+      this.x += this.vw * dt; this.y += this.vh * dt;
       this.still = 0;
-      if (this.state !== 'walk') { this.state = 'walk'; this._play('walk'); }
+      if (this.state !== 'walk') { this.state = 'walk'; this._play('walk'); this.t = this.stride * this.anim.duration; }
+      const d = Math.hypot(this.x - px, this.y - py);
+      this._stride(d * (Math.abs(this.vw) < 14 || sgn(this.vw) === this.face ? 1 : -1));      // backwards only while turning round
     } else {
       this.still += dt;
       if (this.state === 'walk' && this.still > 0.15) { this.state = 'idle'; this._play('idle'); }
     }
+    if (!calm) this._facing(z, dt, moving);
     if (calm || this.cool > 0 || z.state === 'held') return;
     // ---- choose an attack ----
     const inRange = adx < E.attackRange + 8 && ady < E.engageY + 4;
     if (inRange && g.attackerCount() < g.maxAttackers) {
+      this._faceZee(z); this.turnT = 0;
       if (this.canGrab && Math.random() < E.grabChance && z.canBeGrabbed()) { this.state = 'grab'; this._play('grab'); g.sfx.grab(); return; }
       this.combo = this.combo > 0 ? this.combo : (Math.random() < 0.6 ? Math.floor(rnd(1, 3.4)) : 0);   // 0-2 follow-up hits
       this._startMelee(g);
@@ -159,7 +217,11 @@ export class Enemy {
 
   _evade(dt, g) {
     this.evadeT -= dt;
+    const px = this.x, py = this.y;
     this.x += this.mx * this.speed * 1.9 * dt; this.y += this.my * this.speed * 1.0 * dt;
+    this.vw = this.mx * this.speed * 1.9; this.vh = this.my * this.speed;
+    const back = Math.sign((this.x - px) * this.face) || 1;
+    this._stride(Math.hypot(this.x - px, this.y - py) * back);
     if (this.evadeT <= 0) { this.state = 'idle'; this._play('idle'); this.cool = 0.05; this.combo = 1; }   // and straight back in
   }
 
@@ -245,7 +307,13 @@ export class Enemy {
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.globalAlpha = 0.2 * fade;
     ctx.drawImage(silhouette(ch, this.anim, this.frame), -ch.anchor.x * ch.scale, -ch.anchor.y * ch.scale, dw, dh);
     ctx.restore(); ctx.globalAlpha = 1;
-    drawAnim(ctx, ch, this.anim, this.frame, x, y, this.face, fade, this.flash * 6);
+    if (this.leanK > 0.01 && !lying) {                          // each enemy's walking style: forward lean, body roll and mid-step lift
+      const S = this.style, k = this.leanK, roll = S.sway * Math.sin(this.stride * 2 * Math.PI) * k;
+      const lift = S.bounce * Math.abs(Math.sin(this.stride * Math.PI)) * k;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(S.lean * k * this.face + roll); ctx.translate(-x, -y);
+      drawAnim(ctx, ch, this.anim, this.frame, x, y - lift, this.face, fade, this.flash * 6);
+      ctx.restore();
+    } else drawAnim(ctx, ch, this.anim, this.frame, x, y, this.face, fade, this.flash * 6);
     // health bar with the HP number beside it, for a moment after being hit
     if (this.barT > 0 && this.state !== 'dead') {
       const bw = this.heavy ? 44 : 34, bx = Math.round(x - bw / 2 - 6), by = Math.round(y - ch.manifest.gameHeight - 12);
