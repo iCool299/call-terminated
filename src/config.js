@@ -1,11 +1,15 @@
 ﻿// All balance numbers and key bindings live here so they are easy to tune.
 export const CONFIG = {
-  view: { w: 640, h: 360 },            // internal resolution, scaled to fit any screen (keeps pixels crisp)
-  floor: { top: 226, bottom: 338 },    // walkable band (y of Zee's feet)
+  view: { w: 640, h: 360 },            // the SCREEN (canvas) in logical units: the HUD is laid out in this space and never zooms
+  // CAMERA: the world is drawn through a zoomed-out camera. zoom = view.w / viewW (about 0.71), so 900 x 506 world units are visible
+  // and rendered into the 640 x 360 screen. Characters keep their world size (Zee is ~132 units tall): the camera makes them smaller.
+  camera: { viewW: 900, lookAhead: 56, follow: 6 },
+  // WORLD (506 units tall): Y 0-205 upper architecture, Y 205-325 furniture / doors / wall details, Y 325-485 the floor band.
+  floor: { top: 325, bottom: 485 },    // walkable band: the y of the characters' FEET, in world units
 
   zee: {
     maxHp: 100,
-    walkSpeed: 130,                    // px/sec (game is 640 wide, so a walk crosses the screen in ~5 s)
+    walkSpeed: 130,                    // world units / sec (the view is 900 wide, so a walk crosses it in ~7 s)
     runSpeed: 260,
     depthSpeedFactor: 0.62,            // vertical (depth) movement is slower than sideways
     runThreshold: 0.82,                // touch joystick push needed to run
@@ -82,3 +86,6 @@ export const CONFIG = {
     dev_hurt: ['1'], dev_knockdown: ['2'], dev_defeat: ['3'], dev_victory: ['4'], dev_revive: ['r', 'R'],
   },
 };
+
+CONFIG.camera.zoom = CONFIG.view.w / CONFIG.camera.viewW;      // 0.711
+CONFIG.camera.viewH = CONFIG.view.h / CONFIG.camera.zoom;      // 506.25

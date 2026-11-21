@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611220023';
-import { Enemy } from './enemy.js?v=202611220023';
-import { SOFT } from './zee.js?v=202611220023';
-import { sfx } from './sfx.js?v=202611220023';
+import { CONFIG } from './config.js?v=202611220038';
+import { Enemy } from './enemy.js?v=202611220038';
+import { SOFT } from './zee.js?v=202611220038';
+import { sfx } from './sfx.js?v=202611220038';
 
 const E = CONFIG.enemy;
 
@@ -21,9 +21,9 @@ export class Game {
     this.test = { speed: 1, paused: false, step: 0, target: 'all', face: -1 };
     this.items = []; this.esc = 0;
     this.enemies = []; this.shots = []; this.parts = []; this.texts = [];
-    const z = this.zee; z.x = 54; z.y = 292; z.face = 1; z.hp = CONFIG.zee.maxHp; z.z = 0;
+    const z = this.zee; z.x = 54; z.y = CONFIG.floor.top + 0.55 * (CONFIG.floor.bottom - CONFIG.floor.top); z.face = 1; z.hp = CONFIG.zee.maxHp; z.z = 0;
     chars.forEach(([id, c], i) => {
-      const e = new Enemy(id, c, 150 + i * 64, i % 2 ? 314 : 270);
+      const e = new Enemy(id, c, 150 + i * 84, i % 2 ? CONFIG.floor.bottom - 34 : CONFIG.floor.top + 62);
       e.face = -1; e.spawnT = 0; e.hp = e.maxHp;
       e.testPlay('idle'); e.snapshot(); this.enemies.push(e);
     });
@@ -40,13 +40,13 @@ export class Game {
   get maxAttackers() { return (this.enemies.length > 4 ? E.maxAttackers + 1 : E.maxAttackers) + (this.escLevel >= 3 ? 1 : 0); }
 
   spawn(id, character) {
-    const z = this.zee, W = CONFIG.view.w;
-    // walks in from off-screen: first from the side away from her, then alternating edges so a group comes at her from both sides
-    this.spawnSide = this.enemies.some((o) => o.state !== 'dead') ? -(this.spawnSide || 1) : (z.x > W / 2 ? -1 : 1);
-    const x = this.spawnSide < 0 ? -40 : W + 40;
+    const z = this.zee, VW = CONFIG.camera.viewW, cam = this.camera ? this.camera.x : 0;      // cam = left edge of the visible part of the world
+    // walks in from just outside the visible area: first from the side away from her, then alternating edges so a group comes at her from both sides
+    this.spawnSide = this.enemies.some((o) => o.state !== 'dead') ? -(this.spawnSide || 1) : (z.x > cam + VW / 2 ? -1 : 1);
+    const x = this.spawnSide < 0 ? cam - 40 : cam + VW + 40;
     const y = this.bounds.minY + 10 + Math.random() * (this.bounds.maxY - this.bounds.minY - 20);
     const e = new Enemy(id, character, x, y);
-    e.face = x < z.x ? 1 : -1; e.spawnT = 0; e.state = 'idle'; e.entering = true;
+    e.face = x < z.x ? 1 : -1; e.spawnT = 0; e.state = 'idle'; e.entering = true; e.side = Math.sign(e.x - z.x) || 1;
     this.enemies.push(e);
     sfx.spawn();
     return e;
@@ -108,11 +108,11 @@ export class Game {
   }
 
   _shots(dt) {
-    const z = this.zee, W = CONFIG.view.w;
+    const z = this.zee, WW = this.level ? this.level.width : CONFIG.view.w;     // headsets fly until they leave the level
     for (const s of this.shots) {
       s.x += s.vx * dt; s.spin += dt * 22;
       if (Math.abs(s.x - z.x) < 16 && Math.abs(s.y - z.y) < 14 && z.z < 50 && this.hurtZee(E.headsetDmg, Math.sign(s.vx), null)) s.dead = true;   // jump over it!
-      if (s.x < -30 || s.x > W + 30) s.dead = true;
+      if (s.x < -30 || s.x > WW + 30) s.dead = true;
     }
     this.shots = this.shots.filter((s) => !s.dead);
   }

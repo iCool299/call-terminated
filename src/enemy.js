@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611220023';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220023';
-import { SOFT } from './zee.js?v=202611220023';
+import { CONFIG } from './config.js?v=202611220038';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220038';
+import { SOFT } from './zee.js?v=202611220038';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -50,7 +50,7 @@ export class Enemy {
     this.atkRate = (this.heavy ? 1.12 : 1.1) * (this.style.atk || 1);                           // their swings are quicker than the raw animation
     this.evadeChance = this.heavy ? 0.12 : 0.4;
     this.prefersRange = !this.canGrab && Math.random() < 0.45;       // some enemies keep their distance and throw headsets
-    this.side = sgn(x - 320);                                         // which side of Zee it likes to fight from
+    this.side = 1;                                         // which side of Zee it likes to fight from
     this.flash = 0; this.barT = 0; this.spawnT = 0.5; this.cool = rnd(0.5, 0.9);
     this.mx = 0; this.my = 0; this.decideT = 0; this.still = 0; this.sideT = 0; this.hitCool = 0; this.combo = 0; this.evadeId = -1; this.evadeT = 0;
     this.tellT = 0; this.squash = 0; this.landed = true; this.stepAcc = 0;

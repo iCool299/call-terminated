@@ -1,21 +1,22 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611220023';
-import { loadCharacter, VERSION, LOOK } from './assets.js?v=202611220023';
-import { Input } from './input.js?v=202611220023';
-import { Zee } from './zee.js?v=202611220023';
-import { Game } from './game.js?v=202611220023';
-import { ENEMY_IDS } from './enemy.js?v=202611220023';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611220020';
-import { unlock } from './sfx.js?v=202611220023';
+import { CONFIG } from './config.js?v=202611220038';
+import { loadCharacter, VERSION, LOOK } from './assets.js?v=202611220038';
+import { Input } from './input.js?v=202611220038';
+import { Zee } from './zee.js?v=202611220038';
+import { Game } from './game.js?v=202611220038';
+import { ENEMY_IDS } from './enemy.js?v=202611220038';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611220038';
+import { Level, qualityDepartment } from './level.js?v=202611220038';
+import { Camera } from './camera.js?v=202611220038';
+import { unlock } from './sfx.js?v=202611220038';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
 // NOT desynchronized: that low-latency mode can show a frame while it is still being drawn, so the sprites and HUD
 // flickered (the screen sometimes showed just the background). Normal buffering only ever shows finished frames.
 const ctx = canvas.getContext('2d', { alpha: false });
-const bg = document.createElement('canvas');      // the static office is painted once, then just blitted
-const bgCtx = bg.getContext('2d');
-let k = 1;                                        // internal pixels per game pixel (canvas renders at display resolution)
+let k = 1;                                        // device pixels per SCREEN unit (the 640 x 360 logical screen; the canvas renders at display resolution)
+let ppu = 1;                                      // device pixels per WORLD unit = k * camera zoom (the world is drawn zoomed out, about 0.71)
 
 const $ = (id) => document.getElementById(id);
 const loadedEnemyChars = [];
@@ -38,14 +39,11 @@ function resize() {
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const cw = Math.max(W, Math.min(1920, Math.round(cssW * dpr)));
   k = cw / W;
-  if (character) character.px = k;       // device pixels per game unit, used to snap sprites to whole pixels
-  for (const c of loadedEnemyChars) c.px = k;
+  ppu = k * CONFIG.camera.zoom;
+  if (character) character.px = ppu;     // device pixels per world unit, used to snap sprites to whole device pixels
+  for (const c of loadedEnemyChars) c.px = ppu;
   canvas.width = cw; canvas.height = Math.round(H * k);
-  bg.width = canvas.width; bg.height = canvas.height;
   ctx.imageSmoothingEnabled = false;
-  bgCtx.imageSmoothingEnabled = false;
-  bgCtx.setTransform(k, 0, 0, k, 0, 0);
-  drawScene(bgCtx);
 }
 addEventListener('resize', resize); addEventListener('orientationchange', resize); resize();
 
@@ -89,24 +87,6 @@ function buildViewer() {
   $('viewer-close').addEventListener('click', () => $('viewer').classList.remove('open'));
 }
 
-// ---------- scene ----------
-function drawScene(ctx) {
-  const F = CONFIG.floor;
-  const g = ctx.createLinearGradient(0, 0, 0, F.top);
-  g.addColorStop(0, '#323752'); g.addColorStop(1, '#474d6c');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, F.top);
-  for (let x = 24; x < W; x += 112) {          // windows
-    ctx.fillStyle = '#272b40'; ctx.fillRect(x, 38, 72, 92);
-    ctx.fillStyle = '#6e79a8'; ctx.fillRect(x + 4, 42, 64, 84);
-    ctx.fillStyle = '#8791bd'; ctx.fillRect(x + 4, 42, 64, 10);
-  }
-  ctx.fillStyle = '#585369'; ctx.fillRect(0, F.top - 8, W, 8);
-  ctx.fillStyle = '#7a7186'; ctx.fillRect(0, F.top, W, H - F.top);
-  ctx.strokeStyle = 'rgba(0,0,0,.14)'; ctx.lineWidth = 1;
-  for (let y = F.top + 28; y < H; y += 28) { ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(W, y + .5); ctx.stroke(); }
-  for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x + .5, F.top); ctx.lineTo(x + .5, H); ctx.stroke(); }
-}
-
 // HUD lives in src/hud.js (arcade panels: portrait, HP, SP, KO)
 let hudLast = performance.now();
 function drawHud() { const now = performance.now(), dt = Math.min(0.1, (now - hudLast) / 1000); hudLast = now; drawArcadeHud(ctx, zee, game, dt); }
@@ -126,7 +106,7 @@ function updateButtons() {       // only touch the DOM when a value actually cha
 // ---------- enemies: spawn button ----------
 function enemyChar(id) {
   if (!enemyChars.has(id)) {
-    enemyChars.set(id, loadCharacter(`assets/characters/${id}/`, id).then((c) => { c.px = k; loadedEnemyChars.push(c); return c; }));
+    enemyChars.set(id, loadCharacter(`assets/characters/${id}/`, id).then((c) => { c.px = ppu; loadedEnemyChars.push(c); return c; }));
   }
   return enemyChars.get(id);
 }
@@ -187,7 +167,7 @@ function setupModes() {
     document.body.classList.toggle('testmode', test);
     $('btn-mode').innerHTML = test ? 'Mode: Animation test &#8644;' : 'Mode: Battle &#8644;';
     history.replaceState(null, '', test ? '?mode=test' : location.pathname);
-    if (test) enterTest(); else { game.exitTest(); zee.x = W / 2; zee.y = 292; }
+    if (test) enterTest(); else { game.exitTest(); zee.x = 400; zee.y = (CONFIG.floor.top + CONFIG.floor.bottom) / 2; }
   }
   $('btn-mode').addEventListener('click', () => setMode(!game.test));
   $('btn-mode').tabIndex = -1;
@@ -198,12 +178,15 @@ function setupModes() {
 // ---------- loop ----------
 // Logic runs on a fixed 120 Hz step (same behaviour on any device); drawing runs every display refresh
 // and interpolates between logic steps, so 60 / 90 / 120 / 144 Hz screens all look smooth.
-const bounds = { minX: 40, maxX: W - 40, minY: CONFIG.floor.top + 14, maxY: CONFIG.floor.bottom };
+const level = new Level([qualityDepartment()]);           // Level 1 starts in the Quality Department (1800 units wide); more rooms are added end to end
+const camera = new Camera();
+const bounds = { minX: 40, maxX: level.width - 40, minY: CONFIG.floor.top, maxY: CONFIG.floor.bottom };   // updated every frame from the level (locked doors are walls)
 const STEP = CONFIG.simStep;
 let acc = 0, readoutText = '';
 function frame(now) {
   let dt = (now - last) / 1000; last = now;
   if (dt > 0.1) dt = 0.1;                       // tab was throttled: don't fast-forward
+  Object.assign(bounds, level.boundsFor(zee.x));
   const actions = input.queue;
   if (actions.includes('pause')) { input.queue = actions.filter((a) => a !== 'pause'); setPaused(!paused); }
   if (paused) { input.consume(); acc = 0; }
@@ -211,13 +194,18 @@ function frame(now) {
     acc += dt;
     while (acc >= STEP) { game.snapshot(); game.update(STEP, input); acc -= STEP; }
   }
+  const a = paused ? 1 : acc / STEP;
+  const zx = zee.px !== undefined ? zee.px + (zee.x - zee.px) * a : zee.x;      // Zee's smoothed position this frame
+  camera.update(zx, zee.face, dt, level.width, ppu);
   const sx = game.shake > 0 ? (Math.random() - 0.5) * 2 * game.shake : 0, sy = game.shake > 0 ? (Math.random() - 0.5) * 2 * game.shake : 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.setTransform(1, 0, 0, 1, Math.round(sx * k), Math.round(sy * k));
-  ctx.drawImage(bg, 0, 0);
-  ctx.setTransform(k, 0, 0, k, Math.round(sx * k), Math.round(sy * k));
-  game.draw(ctx, paused ? 1 : acc / STEP);
+  // WORLD transform: zoomed out and scrolled by the camera (whole device pixels), screen shake on top
+  ctx.setTransform(ppu, 0, 0, ppu, Math.round(sx * k) - camera.px, Math.round(sy * k));
+  level.drawBack(ctx, camera.gx);
+  game.draw(ctx, a);
+  level.drawFront(ctx, camera.gx);
+  // SCREEN transform: the HUD stays in screen space, so its size never changes with the camera
   ctx.setTransform(k, 0, 0, k, 0, 0);
   drawHud(); game.drawHud(ctx); updateButtons();
   const text = `${zee.viewer ? 'viewer' : zee.state} | ${zee.animName} ${zee.frame + 1}/${zee.anim.frames} | v${VERSION}`;
@@ -228,15 +216,16 @@ function frame(now) {
 (async function boot() {
   try {
     character = await loadCharacter('assets/characters/zee/');
-    character.px = k;
-    zee = new Zee(character, W / 2, 292);
+    character.px = ppu;
+    zee = new Zee(character, 260, (CONFIG.floor.top + CONFIG.floor.bottom) / 2);
     game = new Game(zee, bounds);
+    game.level = level; game.camera = camera;
     buildViewer();
     setupSpawner();
     setupModes();
     $('loading').remove();
     requestAnimationFrame((t) => { last = t; frame(t); });
-    window.__zee = zee; window.__input = input; window.__game = game;     // handy for debugging in the console
+    window.__zee = zee; window.__input = input; window.__game = game; window.__level = level; window.__camera = camera;     // handy for debugging in the console
   } catch (err) {
     $('loading').textContent = 'Could not load assets: ' + err.message + ' (run through a local web server)';
   }

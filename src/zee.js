@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611220023';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220023';
+import { CONFIG } from './config.js?v=202611220038';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220038';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -120,11 +120,12 @@ export class Zee {
   }
   _updatePapers(dt) {
     for (const p of this.papers) { p.t += dt; p.x += p.vx * dt; p.vz -= 55 * dt; p.z = Math.max(4, p.z + p.vz * dt); p.spin += dt * 14; }
-    this.papers = this.papers.filter((p) => !p.dead && p.t < C.barrage.life && p.x > -20 && p.x < CONFIG.view.w + 20);
+    this.papers = this.papers.filter((p) => !p.dead && p.t < C.barrage.life && p.x > (this.bounds ? this.bounds.minX : 0) - 80 && p.x < (this.bounds ? this.bounds.maxX : 640) + 80);
   }
 
   // ---------- main update ----------
   update(dt, input, bounds) {
+    this.bounds = bounds;
     this.t += dt;
     this.cd.dodge = Math.max(0, this.cd.dodge - dt);
     this.cd.special = Math.max(0, this.cd.special - dt * C.specialCooldown * CONFIG.special.trickle * this.chargeMul);   // the special is earned by hitting (addSpecial); this is only a slow trickle
