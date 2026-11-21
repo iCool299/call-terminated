@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611211958';
-import { Enemy } from './enemy.js?v=202611211958';
-import { SOFT } from './zee.js?v=202611211958';
-import { sfx } from './sfx.js?v=202611211958';
+import { CONFIG } from './config.js?v=202611212001';
+import { Enemy } from './enemy.js?v=202611212001';
+import { SOFT } from './zee.js?v=202611212001';
+import { sfx } from './sfx.js?v=202611212001';
 
 const E = CONFIG.enemy;
 
@@ -39,7 +39,9 @@ export class Game {
 
   spawn(id, character) {
     const z = this.zee, W = CONFIG.view.w;
-    const x = z.x > W / 2 ? -40 : W + 40;                                              // walks in from off-screen, on the side away from her
+    // walks in from off-screen: first from the side away from her, then alternating edges so a group comes at her from both sides
+    this.spawnSide = this.enemies.some((o) => o.state !== 'dead') ? -(this.spawnSide || 1) : (z.x > W / 2 ? -1 : 1);
+    const x = this.spawnSide < 0 ? -40 : W + 40;
     const y = this.bounds.minY + 10 + Math.random() * (this.bounds.maxY - this.bounds.minY - 20);
     const e = new Enemy(id, character, x, y);
     e.face = x < z.x ? 1 : -1; e.spawnT = 0; e.state = 'idle'; e.entering = true;

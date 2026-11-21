@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611211958';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211958';
-import { SOFT } from './zee.js?v=202611211958';
+import { CONFIG } from './config.js?v=202611212001';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611212001';
+import { SOFT } from './zee.js?v=202611212001';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -178,9 +178,17 @@ export class Enemy {
       this.decideT = 0.15;
       if (this.sideT <= 0) {
         const front = g.enemies.some((o) => o !== this && !['dead', 'down', 'spawn'].includes(o.state) && sgn(o.x - z.x) === -behind && Math.abs(o.x - z.x) < 110);
-        if (front) this.side = behind;                                                                  // someone is already in her face: go round the back
+        // surround her: take whichever side has fewer of us on it (so a crowd spreads out round her instead of queueing)
+        const mates = g.enemies.filter((o) => o !== this && !['dead', 'down', 'spawn'].includes(o.state) && o.side);
+        const nB = mates.filter((o) => o.side === behind).length, nF = mates.length - nB;
+        if (nB < nF) this.side = behind;
+        else if (nF < nB) this.side = -behind;
+        else if (front) this.side = behind;                                                             // someone is already in her face: go round the back
         else if (Math.random() < (this.heavy ? 0.25 : 0.4)) this.side = behind;                         // flank on my own
         else this.side = mySide;
+        // sharing a side: stand in a different depth lane so we don't hide behind each other
+        const same = mates.filter((o) => o.side === this.side && o.id < this.id).length;
+        this.slotY = same === 0 ? 0 : (same % 2 ? -1 : 1) * 22;
         this.sideT = rnd(1.6, 2.8);
       }
       const wait = g.attackerCount() >= g.maxAttackers && !this.attacking && this.side !== behind;   // the attack slots are full: hover just outside her reach (backstabbers never wait)
@@ -190,7 +198,7 @@ export class Enemy {
       }
       else {
         const tx = z.x + this.side * (wait ? E.attackRange + 34 : E.attackRange * 0.8);
-        let ty = z.y;
+        let ty = z.y + (this.slotY || 0) * (Math.abs(this.x - tx) < 40 ? 0.35 : 1);   // close in on her line once in reach
         if (mySide !== this.side && adx < 95) ty = z.y + (this.lane || (this.lane = (Math.random() < 0.5 ? -1 : 1))) * 34;   // going round her: swing out in depth first
         else this.lane = 0;
         const ex = tx - this.x, ey = ty - this.y;
@@ -331,7 +339,12 @@ export class Enemy {
   // ---------- drawing ----------
   draw(ctx, alpha = 1) {
     if (this.px === undefined) this.snapshot();
-    const x = this.px + (this.x - this.px) * alpha, y = this.py + (this.y - this.py) * alpha;
+    let x = this.px + (this.x - this.px) * alpha, y = this.py + (this.y - this.py) * alpha;
+    // she fights the grab: the held pose shakes all the time, with a hard jolt on every button she mashes
+    if (this.holdingZee) {
+      const now = performance.now(), j = Math.max(0, 1 - (now - (this.joltAt || 0)) / 160);
+      x += Math.sin(now / 38) * 0.9 + Math.sin(now / 17) * 2.6 * j; y += -Math.abs(Math.sin(now / 23)) * 1.6 * j;
+    }
     let fade = 1;
     if (this.state === 'spawn') fade = 1 - this.spawnT / 0.5;
     if (this.state === 'dead' && this.deadT > E.corpseTime - 0.6) fade = Math.max(0, (E.corpseTime - this.deadT) / 0.6);

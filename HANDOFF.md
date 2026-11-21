@@ -30,3 +30,4 @@ After any work, add a dated line under "Decisions and changes" and adjust "Next 
 - 2026-11-21: no redesign (master redesign gave little gain). Added tools/lock-head.ps1 (one clean head pasted on every walk/idle frame, matched position) - run automatically by build-enemy after order-walk. Heavies HP 140.
 
 - 2026-11-21: polish pass - body separation + pushback, white-pop/light-red hit flash, decluttered damage numbers, new HUD, enemies walk in from screen edges, enemies step back off a beaten Zee.
+- 2026-11-21: grabbed Zee struggles (shake + jolt per mash); enemies surround her (pick the emptier side, separate depth lanes), spawns alternate edges.

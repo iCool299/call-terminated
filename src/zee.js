@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611211958';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211958';
+import { CONFIG } from './config.js?v=202611212001';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611212001';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -65,7 +65,7 @@ export class Zee {
     const h = this.holder;
     if (!h || !h.holdingZee) { this.holder = null; return this._fall(0, false); }
     this.x = h.x + h.face * 36; this.y = h.y + 1; this.z = 0; this.face = -h.face;     // she is drawn inside the grabber's own animation
-    for (const a of actions) if (a === 'light' || a === 'jump' || a === 'dodge' || a === 'special') this.struggle++;
+    for (const a of actions) if (a === 'light' || a === 'jump' || a === 'dodge' || a === 'special') { this.struggle++; h.joltAt = performance.now(); }
     if (this.struggle >= C.escapeMash) { h.breakFree(); this.events.push({ type: 'escape' }); this.x = h.x + h.face * 66; this.z = 45; this.px = this.x; this.pz = 45; this._fall(-h.face * 120, false); }
   }
   // flung by the holder; lands as a slam that costs a share of her HP
