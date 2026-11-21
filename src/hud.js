@@ -1,14 +1,14 @@
 // Arcade HUD (early-2000s style): angled panels with white outlines, glossy bars, bold italic type.
 // Built from separate pieces drawn in game units, so it scales with the canvas at any resolution.
 // Top-left: portrait + HP bar + SP meter. Bottom-left: KO counter. All values come from the live game state.
-import { CONFIG } from './config.js?v=202611212048';
-import { VERSION } from './assets.js?v=202611212048';
+import { CONFIG } from './config.js?v=202611212050';
+import { VERSION } from './assets.js?v=202611212050';
 
 const portrait = new Image();
 portrait.src = 'assets/ui/zee_portrait.png?v=' + VERSION;
 
 const FONT = (px) => `italic 900 ${px}px "Arial Black", "Segoe UI Black", "Helvetica Neue", Arial, sans-serif`;
-const SCALE = 1.6;                        // HUD size relative to the 640x360 stage (the stage itself scales to the screen)
+const SCALE = 1.2;                        // HUD size relative to the 640x360 stage (the stage itself scales to the screen)
 const NAVY = '#0e1630', NAVY2 = '#1b2650', WHITE = '#f4f6ff';
 
 // smoothed display values
@@ -75,7 +75,7 @@ export function drawHud(ctx, zee, game, dt) {
   }
 
   // ---- HP bar ----
-  const hx = 58, hy = 11, hw = 136, hh = 14, hs = 5;
+  const hx = 60, hy = 9, hw = 196, hh = 13, hs = 5;
   panel(ctx, hx, hy, hw, hh, hs);
   label(ctx, 'HP', hx + 7, hy + hh / 2 + 0.5, 9, WHITE);
   const bx = hx + 25, by = hy + 3, bw = hw - 32, bh = hh - 6;
@@ -86,7 +86,7 @@ export function drawHud(ctx, zee, game, dt) {
   label(ctx, `${Math.ceil(hp)} / ${maxHp}`, bx + bw - 4, by + bh / 2 + 0.5, 7, WHITE, NAVY, 2.2, 'right');
 
   // ---- SP meter: four cyan segments ----
-  const sx = 54, sy = 28, sw = 104, sh = 11, ss = 4;
+  const sx = 56, sy = 25, sw = 168, sh = 10, ss = 4;
   panel(ctx, sx, sy, sw, sh, ss);
   label(ctx, 'SP', sx + 7, sy + sh / 2 + 0.5, 8, WHITE);
   const segX = sx + 24, segW = (sw - 32) / 4, segY = sy + 2.5, segH = sh - 5;
@@ -105,13 +105,13 @@ export function drawHud(ctx, zee, game, dt) {
 
   // ---- KO counter (bottom-left, scaled from the bottom-left corner) ----
   ctx.save(); ctx.translate(0, CONFIG.view.h); ctx.scale(SCALE, SCALE);
-  const kx = 6, ky = -25, kw = 74, kh = 19, ks = 7;
+  const kx = 6, ky = -22, kw = 88, kh = 16, ks = 6;
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowOffsetY = 1.5; ctx.shadowBlur = 3;
   slant(ctx, kx, ky, kw, kh, ks, 3); ctx.fillStyle = '#ff8a1c'; ctx.fill(); ctx.restore();
   slant(ctx, kx + 3, ky + 2.6, kw - 9, kh - 5.2, ks - 1, 2); ctx.fillStyle = NAVY; ctx.fill();
   const kg = ctx.createLinearGradient(0, ky + 4, 0, ky + kh - 4); kg.addColorStop(0, '#ffe45a'); kg.addColorStop(1, '#f39a12');
   label(ctx, 'KO', kx + 13, ky + kh / 2 + 0.5, 10, kg, NAVY, 2.2);
-  label(ctx, String(game.kos), kx + 46, ky + kh / 2 + 0.5, 10, WHITE, NAVY, 2.2);
+  label(ctx, String(game.kos), kx + 56, ky + kh / 2 + 0.5, 10, WHITE, NAVY, 2.2);
   ctx.restore();
   ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
 }
