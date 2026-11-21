@@ -1,11 +1,11 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611212035';
-import { loadCharacter, VERSION } from './assets.js?v=202611212035';
-import { Input } from './input.js?v=202611212035';
-import { Zee } from './zee.js?v=202611212035';
-import { Game } from './game.js?v=202611212035';
-import { ENEMY_IDS } from './enemy.js?v=202611212035';
-import { unlock } from './sfx.js?v=202611212035';
+import { CONFIG } from './config.js?v=202611212038';
+import { loadCharacter, VERSION, LOOK } from './assets.js?v=202611212038';
+import { Input } from './input.js?v=202611212038';
+import { Zee } from './zee.js?v=202611212038';
+import { Game } from './game.js?v=202611212038';
+import { ENEMY_IDS } from './enemy.js?v=202611212038';
+import { unlock } from './sfx.js?v=202611212038';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -168,6 +168,9 @@ function setupSpawner() {
   (async () => { for (const id of ENEMY_IDS) { try { await enemyChar(id); } catch (e) { /* loaded on demand later */ } } })();
   addEventListener('pointerdown', unlock, { once: true }); addEventListener('keydown', unlock, { once: true });
   window.__spawn = (id) => enemyChar(id).then((c) => game.spawn(id, c));
+  // V: toggle the lit "finish" pass (outline, rim light, foot shading, scene wash, colour grade) to compare before / after
+  addEventListener('keydown', (e) => { if (e.key === 'v' || e.key === 'V') { LOOK.on = !LOOK.on; window.__look = LOOK.on; } });
+  window.__LOOK = LOOK;
 }
 
 // ---------- game modes: Battle (default) / Animation test ----------

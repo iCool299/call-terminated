@@ -1,6 +1,6 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js?v=202611212035';
+import { CONFIG } from './config.js?v=202611212038';
 
 // Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
 export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -100,7 +100,60 @@ export function frameAt(anim, t) {
 
 // x, y may be fractional: the canvas is rendered at display resolution so motion stays smooth.
 // Frames are stored at 2x, so they are drawn at `scale` (0.5) game units per sprite pixel with smoothing on.
+// ---------- lit rendering ("finish" pass, toggle with V) ----------
+// One light for everyone: matching dark outline, a rim of light on the side facing the windows, darker towards the feet,
+// a soft scene colour wash and a per-character colour grade so the whole cast shares one look.
+export const LOOK = {
+  on: true,
+  lightX: -1, lightY: -1,                        // light comes from the back-top-left (the windows), in world space
+  rim: 'rgb(200,222,255)', rimAlpha: 0.55, rimPx: 3,
+  outline: '#130d1a', outlinePx: 2,
+  feet: 0.26,                                    // how much darker the legs get towards the floor
+  wash: 'rgba(60,70,130,0.10)',                  // scene colour wash (per level later)
+  grade: { zee: '', default: 'saturate(0.9) contrast(1.04)' },   // enemies brought to Zee's saturation
+};
+let S1, S2;
+function scratch(w, h) {
+  if (!S1 || S1.width < w || S1.height < h) {
+    for (const k of [0, 1]) { const c = document.createElement('canvas'); c.width = w; c.height = h; if (k) S2 = c; else S1 = c; }
+  }
+  const a = S1.getContext('2d'), b = S2.getContext('2d');
+  a.setTransform(1, 0, 0, 1, 0, 0); b.setTransform(1, 0, 0, 1, 0, 0);
+  a.globalCompositeOperation = b.globalCompositeOperation = 'source-over'; a.globalAlpha = b.globalAlpha = 1; a.filter = b.filter = 'none';
+  a.clearRect(0, 0, w, h); b.clearRect(0, 0, w, h);
+  return [a, b];
+}
+// builds the finished frame in S1 (cell-sized, unflipped). face decides which side the world light hits.
+function litFrame(character, anim, frame, face) {
+  const { cw, ch } = character, L = LOOK, [sx, sy] = srcOf(anim, frame, cw, ch), p = L.outlinePx;
+  const W = cw + 2 * p, H = ch + 2 * p;
+  const [a, b] = scratch(W, H);
+  // B = dark silhouette (for the outline)
+  b.drawImage(anim.img, sx, sy, cw, ch, p, p, cw, ch);
+  b.globalCompositeOperation = 'source-in'; b.fillStyle = L.outline; b.fillRect(0, 0, W, H);
+  // A = outline (silhouette stamped around), then the colour-graded sprite on top
+  for (const [dx, dy] of [[-p, 0], [p, 0], [0, -p], [0, p]]) a.drawImage(S2, dx, dy);
+  a.filter = L.grade[character.manifest.character] ?? L.grade.default;
+  a.drawImage(anim.img, sx, sy, cw, ch, p, p, cw, ch);
+  a.filter = 'none';
+  // rim light: the sprite's own edge band on the side facing the light
+  const lx = L.lightX * face, ly = L.lightY, r = L.rimPx;
+  b.globalCompositeOperation = 'source-over'; b.clearRect(0, 0, W, H);
+  b.drawImage(anim.img, sx, sy, cw, ch, p, p, cw, ch);
+  b.globalCompositeOperation = 'source-in'; b.fillStyle = L.rim; b.fillRect(0, 0, W, H);
+  b.globalCompositeOperation = 'destination-out'; b.drawImage(anim.img, sx, sy, cw, ch, p - lx * r, p - ly * r, cw, ch);
+  a.globalCompositeOperation = 'source-atop'; a.globalAlpha = L.rimAlpha; a.drawImage(S2, 0, 0); a.globalAlpha = 1;
+  // darker towards the feet + scene wash (only on the character's pixels)
+  const g = a.createLinearGradient(0, ch * 0.45, 0, ch);
+  g.addColorStop(0, 'rgba(10,6,20,0)'); g.addColorStop(1, `rgba(10,6,20,${L.feet})`);
+  a.fillStyle = g; a.fillRect(0, 0, W, H);
+  a.fillStyle = L.wash; a.fillRect(0, 0, W, H);
+  a.globalCompositeOperation = 'source-over';
+  return p;
+}
+
 export function drawAnim(ctx, character, anim, frame, x, y, face, alpha = 1, tint = 0) {
+  if (LOOK.on && alpha > 0.5) return drawLit(ctx, character, anim, frame, x, y, face, alpha, tint);
   const { cw, ch, anchor, scale } = character;
   const [sx, sy] = srcOf(anim, frame, cw, ch);
   const dw = cw * scale, dh = ch * scale, ax = anchor.x * scale, ay = anchor.y * scale;
@@ -123,4 +176,21 @@ export function drawAnim(ctx, character, anim, frame, x, y, face, alpha = 1, tin
     if (red) { ctx.globalAlpha = alpha * ta; ctx.drawImage(red, 0, 0, cw, ch, x - ax, y - ay, dw, dh); }
   }
   if (alpha !== 1 || red) ctx.globalAlpha = 1;
+}
+
+function drawLit(ctx, character, anim, frame, x, y, face, alpha, tint) {
+  const { cw, ch, anchor, scale } = character;
+  const p = litFrame(character, anim, frame, face);
+  const px = character.px || 1;
+  x = Math.round(x * px) / px; y = Math.round(y * px) / px;
+  const W = cw + 2 * p, H = ch + 2 * p, ax = (anchor.x + p) * scale, ay = (anchor.y + p) * scale;
+  const pop = tint > 0.9, red = tint > 0.01 ? tinted(character, anim, frame, pop) : null, ta = pop ? 0.6 : Math.min(1, tint) * 0.5;
+  const [sx, sy] = srcOf(anim, frame, cw, ch);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.translate(x, y); if (face < 0) ctx.scale(-1, 1);
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(S1, 0, 0, W, H, -ax, -ay, W * scale, H * scale);
+  if (red) { ctx.globalAlpha = alpha * ta; ctx.drawImage(red, 0, 0, cw, ch, -anchor.x * scale, -anchor.y * scale, cw * scale, ch * scale); }
+  ctx.restore();
 }

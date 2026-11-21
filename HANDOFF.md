@@ -33,3 +33,4 @@ After any work, add a dated line under "Decisions and changes" and adjust "Next 
 - 2026-11-21: grabbed Zee struggles (shake + jolt per mash); enemies surround her (pick the emptier side, separate depth lanes), spawns alternate edges.
 - 2026-11-21: bot-played all 8 enemies to KO. Fixes: body separation 36px (no more sliding inside enemies mid-combo), softer white hit pop, enemy HP bar sits on a downed body, Zee's post-hit invulnerability is a soft pulse instead of vanishing.
 - 2026-11-21: Zee makeup idle redone (idle_makeup_v3): lipstick (gold case, red tip) from thigh cargo pocket, compact from back pocket, applies to lips in the mirror, wink, puts both away. build-zee rebuilds that strip alone with gold/red palette extras.
+- 2026-11-21: lit render pass (src/assets.js LOOK, toggle V): shared outline, world-space rim light (windows, top-left), foot shading, scene wash, per-character colour grade, contact shadows. Tune per level via LOOK.

@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611212035';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611212035';
+import { CONFIG } from './config.js?v=202611212038';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212038';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -383,6 +383,7 @@ export class Zee {
     const w = (lying ? 46 : 27) * (1 - Math.min(0.4, lift / 300));
     ctx.globalAlpha = 0.55 * fade;
     ctx.drawImage(SOFT, x - w, y - w * 0.26 + 1, w * 2, w * 0.52);
+    if (LOOK.on) ctx.drawImage(SOFT, x - w * 0.5, y - w * 0.08, w, w * 0.18);      // contact shadow: darker right under the feet
     const ch = this.character, dw = ch.cw * ch.scale, dh = ch.ch * ch.scale;
     ctx.save();
     ctx.translate(x, y); ctx.transform(1, 0, -0.5, 0.3, 0, 0); ctx.scale(this.face, 1);

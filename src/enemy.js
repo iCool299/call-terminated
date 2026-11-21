@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611212035';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611212035';
-import { SOFT } from './zee.js?v=202611212035';
+import { CONFIG } from './config.js?v=202611212038';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212038';
+import { SOFT } from './zee.js?v=202611212038';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -352,6 +352,7 @@ export class Enemy {
     // shadow (soft contact + cast silhouette)
     const w = lying ? 44 : 26;
     ctx.globalAlpha = 0.5 * fade; ctx.drawImage(SOFT, x - w, y - w * 0.26 + 1, w * 2, w * 0.52);
+    if (LOOK.on) ctx.drawImage(SOFT, x - w * 0.5, y - w * 0.08, w, w * 0.18);      // contact shadow: darker right under the feet
     const dw = ch.cw * ch.scale, dh = ch.ch * ch.scale;
     ctx.save(); ctx.translate(x, y); ctx.transform(1, 0, -0.5, 0.3, 0, 0); ctx.scale(this.face, 1);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.globalAlpha = 0.2 * fade;
