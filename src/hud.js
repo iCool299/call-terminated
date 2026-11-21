@@ -1,8 +1,8 @@
 // Arcade HUD (early-2000s style): angled panels with white outlines, glossy bars, bold italic type.
 // Built from separate pieces drawn in game units, so it scales with the canvas at any resolution.
 // Top-left: portrait + HP bar + SP meter. Bottom-left: KO counter. All values come from the live game state.
-import { CONFIG } from './config.js?v=202611212335';
-import { VERSION } from './assets.js?v=202611212335';
+import { CONFIG } from './config.js?v=202611212351';
+import { VERSION } from './assets.js?v=202611212351';
 
 const portrait = new Image();
 portrait.src = 'assets/ui/zee_portrait.png?v=' + VERSION;
@@ -12,7 +12,7 @@ const SCALE = 1.2;                        // HUD size relative to the 640x360 st
 const NAVY = '#0e1630', NAVY2 = '#1b2650', WHITE = '#f4f6ff';
 
 // smoothed display values
-let hpShown = 1, hpGhost = 1, spShown = 0, hitT = 0, lastHp = null;
+let hpShown = 1, hpGhost = 1, spShown = 0, hitT = 0, lastHp = null, spPrev = 0, spFlash = 0;
 
 // slanted panel: the top edge is shifted right by `s` (a parallelogram with slightly rounded corners)
 function slant(ctx, x, y, w, h, s, r = 2) {
@@ -60,6 +60,8 @@ export function drawHud(ctx, zee, game, dt) {
   hpGhost = pct > hpGhost ? pct : Math.max(pct, hpGhost - dt * 0.5);
   const sp = Math.min(1, 1 - zee.cd.special / CONFIG.zee.specialCooldown);
   spShown += (sp - spShown) * Math.min(1, dt * 8);
+  if (sp > spPrev + 0.001) spFlash = 0.3;          // the meter flashes white whenever a hit charges it
+  spPrev = sp; spFlash = Math.max(0, spFlash - dt);
 
   // the whole top-left group is scaled up from its corner (one knob for size)
   ctx.save(); ctx.scale(SCALE, SCALE);
@@ -94,7 +96,11 @@ export function drawHud(ctx, zee, game, dt) {
   for (let i = 0; i < 4; i++) {
     const x = segX + i * segW, fill = Math.max(0, Math.min(1, spShown * 4 - i));
     slant(ctx, x, segY, segW - 2, segH, 2.5, 1.5); ctx.fillStyle = '#1d347a'; ctx.fill();
-    if (fill > 0) { ctx.globalAlpha = pulse; gloss(ctx, x, segY, (segW - 2) * fill, segH, 2.5, '#9dfbff', '#14bfe0'); ctx.globalAlpha = 1; }
+    if (fill > 0) {
+      ctx.globalAlpha = pulse; gloss(ctx, x, segY, (segW - 2) * fill, segH, 2.5, '#9dfbff', '#14bfe0');
+      if (spFlash > 0) { ctx.globalAlpha = Math.min(1, spFlash * 2.5); gloss(ctx, x, segY, (segW - 2) * fill, segH, 2.5, '#ffffff', '#c6f8ff'); }
+      ctx.globalAlpha = 1;
+    }
   }
   if (ready) {                                                   // ready: soft cyan glow around the meter
     ctx.save(); ctx.globalAlpha = 0.35 * pulse; ctx.shadowColor = '#4fe9ff'; ctx.shadowBlur = 8;
@@ -112,6 +118,18 @@ export function drawHud(ctx, zee, game, dt) {
   const kg = ctx.createLinearGradient(0, ky + 4, 0, ky + kh - 4); kg.addColorStop(0, '#ffe45a'); kg.addColorStop(1, '#f39a12');
   label(ctx, 'KO', kx + 13, ky + kh / 2 + 0.5, 10, kg, NAVY, 2.2);
   label(ctx, String(game.kos), kx + 56, ky + kh / 2 + 0.5, 10, WHITE, NAVY, 2.2);
+
+  // ---- escalation meter: three segments (yellow, orange, red) next to the KO badge; pulses at the top level ----
+  const ex = kx + kw + 5, ey = ky + 2.5, ew = 122, eh = 12, es = 4;
+  const lvl = Math.floor(game.esc), maxed = lvl >= 3, ep = maxed ? 0.8 + 0.2 * Math.sin(performance.now() / 110) : 1;
+  panel(ctx, ex, ey, ew, eh, es, NAVY, maxed ? '#ff8a6a' : WHITE);
+  label(ctx, 'ESCALATION', ex + 6, ey + eh / 2 + 0.5, 6, lvl > 0 ? '#ffb03c' : WHITE, NAVY, 2);
+  const esx = ex + 50, esw = (ew - 56) / 3, TOP = ['#ffe27a', '#ffc04a', '#ff9a7a'], BOT = ['#f0b410', '#f07a10', '#e0242c'];
+  for (let i = 0; i < 3; i++) {
+    const x = esx + i * esw, fill = Math.max(0, Math.min(1, game.esc - i));
+    slant(ctx, x, ey + 2.5, esw - 2, eh - 5, 2.5, 1.5); ctx.fillStyle = '#3a1d2a'; ctx.fill();
+    if (fill > 0) { ctx.globalAlpha = ep; gloss(ctx, x, ey + 2.5, (esw - 2) * fill, eh - 5, 2.5, TOP[i], BOT[i]); ctx.globalAlpha = 1; }
+  }
   ctx.restore();
   ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
 }

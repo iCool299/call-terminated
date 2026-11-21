@@ -55,6 +55,14 @@ export const CONFIG = {
     corpseTime: 1.8,
   },
 
+  // Special is EARNED by fighting (hits charge it), not by waiting. Values are a share of a full meter.
+  special: { perHit: 0.07, perKnock: 0.10, perKill: 0.15, perHurt: 0.05, trickle: 1 / 150 },   // trickle: share per second even with nobody to hit
+  // Escalation: keep landing hits without being hit and the fight escalates (3 levels): Zee hits harder and charges her special
+  // faster, the enemies attack more often. Getting hit costs one level; going quiet drains it slowly.
+  escalation: { max: 3, perHit: 0.07, perKnock: 0.12, perKill: 0.2, hurtLoss: 1, idleAfter: 3.5, decay: 0.12, zeeDmg: 0.10, chargeBonus: 0.25, enemyAggr: 0.12 },
+  // Iced coffee: sometimes dropped by a defeated enemy (more likely from heavies, and when Zee is low); walk over it to heal.
+  coffee: { chance: 0.25, chanceLow: 0.45, lowHpPct: 0.4, heavyBonus: 0.15, heal: 30, life: 12, maxOnFloor: 2, pickupX: 20, pickupY: 14 },
+
   windupSpeed: 1.4,       // wind-up frames (before the first hit frame) play this much faster
   simStep: 1 / 120,        // fixed logic step (seconds); rendering runs at the display refresh rate
 

@@ -41,4 +41,6 @@ export const sfx = {
   ko() { tone(300, 60, 0.45, 0.5, 'sawtooth'); noise(0.3, 900, 120, 0.4); },
   spawn() { tone(420, 840, 0.14, 0.18, 'square'); },
   special() { noise(0.12, 1500, 3000, 0.2); },
+  levelup() { tone(330, 660, 0.14, 0.28, 'square'); tone(495, 990, 0.22, 0.2, 'triangle'); },
+  coffee() { tone(700, 1100, 0.09, 0.28); tone(1100, 1700, 0.15, 0.22, 'triangle'); noise(0.1, 3000, 6000, 0.1); },
 };

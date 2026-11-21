@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611212335';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212335';
+import { CONFIG } from './config.js?v=202611212351';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212351';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -27,7 +27,8 @@ export class Zee {
     this.face = 1;
     this.hp = C.maxHp;
     this.invuln = 0;
-    this.cd = { special: 0, dodge: 0 };
+    this.cd = { special: C.specialCooldown * 0.5, dodge: 0 };   // special: seconds-equivalent still missing from a full meter (starts half charged)
+    this.dmgMul = 1; this.chargeMul = 1;                  // set by the game from the escalation level
     this.papers = [];             // Printout Barrage projectiles
     this.barrageFrame = -1;
     this.blur = 0;                // 0..1 motion-blur strength, follows her real speed
@@ -50,8 +51,11 @@ export class Zee {
     const a = C.attacks[this.animName];
     if (!a || !this.anim.active.includes(this.frame)) return null;
     if (this.state !== 'attack' && !(this.state === 'jump' && this.animName === 'jump_kick')) return null;
-    return { id: this.attackId, ...a };
+    return { id: this.attackId, ...a, dmg: Math.round(a.dmg * this.dmgMul) };
   }
+
+  // charge the special meter by a share of a full meter (escalation makes it charge faster)
+  addSpecial(frac) { this.cd.special = Math.max(0, this.cd.special - frac * C.specialCooldown * this.chargeMul); }
 
   // ---------- being grabbed and thrown ----------
   canBeGrabbed() {
@@ -122,7 +126,8 @@ export class Zee {
   // ---------- main update ----------
   update(dt, input, bounds) {
     this.t += dt;
-    for (const k of Object.keys(this.cd)) this.cd[k] = Math.max(0, this.cd[k] - dt);
+    this.cd.dodge = Math.max(0, this.cd.dodge - dt);
+    this.cd.special = Math.max(0, this.cd.special - dt * C.specialCooldown * CONFIG.special.trickle * this.chargeMul);   // the special is earned by hitting (addSpecial); this is only a slow trickle
     this.invuln = Math.max(0, this.invuln - dt);
     this.flash = Math.max(0, this.flash - dt);
     const actions = input.consume();

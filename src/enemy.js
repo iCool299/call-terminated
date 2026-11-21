@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611212335';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212335';
-import { SOFT } from './zee.js?v=202611212335';
+import { CONFIG } from './config.js?v=202611212351';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212351';
+import { SOFT } from './zee.js?v=202611212351';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -162,7 +162,7 @@ export class Enemy {
   // ---------- on the move ----------
   _free(dt, g) {
     const z = g.zee, dx = z.x - this.x, dy = z.y - this.y, adx = Math.abs(dx), ady = Math.abs(dy);
-    this.cool -= dt * this.aggr;
+    this.cool -= dt * this.aggr * (g.escMul || 1);        // the higher the escalation, the sooner they attack again
     const calm = z.state === 'defeat';
     // she just whiffed or is stuck in a recovery: punish it
     if (z.state === 'attack' && z.anim.active.length && z.frame > Math.max(...z.anim.active) && adx < E.attackRange + 40) this.cool = Math.min(this.cool, 0.06);

@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611212335';
-import { Enemy } from './enemy.js?v=202611212335';
-import { SOFT } from './zee.js?v=202611212335';
-import { sfx } from './sfx.js?v=202611212335';
+import { CONFIG } from './config.js?v=202611212351';
+import { Enemy } from './enemy.js?v=202611212351';
+import { SOFT } from './zee.js?v=202611212351';
+import { sfx } from './sfx.js?v=202611212351';
 
 const E = CONFIG.enemy;
 
@@ -11,6 +11,7 @@ export class Game {
     this.zee = zee; this.bounds = bounds; this.sfx = sfx;
     this.enemies = []; this.shots = []; this.parts = []; this.texts = [];
     this.hitstop = 0; this.shake = 0; this.combo = 0; this.comboT = 0; this.kos = 0;
+    this.esc = 0; this.escIdle = 0; this.items = [];     // escalation 0..3, time since the last landed hit, things lying on the floor (iced coffee)
     this.reviveT = 0;
     this.test = null;                                  // animation test mode state (null = normal battle)
   }
@@ -18,6 +19,7 @@ export class Game {
   // Animation test mode: every enemy stands in front of Zee, nobody attacks; the page's test panel picks what they play.
   enterTest(chars) {
     this.test = { speed: 1, paused: false, step: 0, target: 'all', face: -1 };
+    this.items = []; this.esc = 0;
     this.enemies = []; this.shots = []; this.parts = []; this.texts = [];
     const z = this.zee; z.x = 54; z.y = 292; z.face = 1; z.hp = CONFIG.zee.maxHp; z.z = 0;
     chars.forEach(([id, c], i) => {
@@ -35,7 +37,7 @@ export class Game {
 
   // how many enemies are in the middle of attacking Zee right now (the rest circle and wait their turn)
   attackerCount() { let n = 0; for (const e of this.enemies) if (e.attacking) n++; return n; }
-  get maxAttackers() { return this.enemies.length > 4 ? E.maxAttackers + 1 : E.maxAttackers; }
+  get maxAttackers() { return (this.enemies.length > 4 ? E.maxAttackers + 1 : E.maxAttackers) + (this.escLevel >= 3 ? 1 : 0); }
 
   spawn(id, character) {
     const z = this.zee, W = CONFIG.view.w;
@@ -54,6 +56,7 @@ export class Game {
   hurtZee(dmg, dir, src) {
     const z = this.zee;
     if (!z.takeHit(dmg, dir)) return false;
+    this._escHurt();
     this._impact(z.x, z.y, 62, dmg, '#ff5a4a', 1.0); z.squash = 1;
     if (dmg >= 12) this._sweat(z.x, z.y, 70, -dir, 4);
     this.shake = Math.max(this.shake, 3); this.hitstop = Math.max(this.hitstop, 0.06);
@@ -64,10 +67,12 @@ export class Game {
   fireHeadset(e) { this.shots.push({ x: e.x + e.face * 28, y: e.y, z: 64, vx: e.face * E.headsetSpeed, spin: 0 }); sfx.whoosh(); }
   onThrow() { sfx.whoosh(); this.shake = Math.max(this.shake, 2); }
 
-  _hitEnemy(e, dmg, dir, knock) {
+  _hitEnemy(e, dmg, dir, knock, viaSpecial = false) {
     const r = e.takeHit(dmg, dir, knock);
     if (!r) return false;
     const kill = r === 'kill';
+    this._earn(kill ? 'kill' : knock ? 'knock' : 'hit', viaSpecial);
+    if (kill) this._maybeCoffee(e);
     this._impact(e.x - dir * 6, e.y, 66, dmg, kill ? '#ffd24a' : '#fff1b0', kill ? 1.4 : knock ? 1.2 : 1);
     if (kill || knock) this._sweat(e.x, e.y, (e.character.manifest.gameHeight || 140) * 0.8, dir, kill ? 7 : 5);
     this.hitstop = Math.max(this.hitstop, kill ? 0.14 : knock ? 0.09 : 0.05);
@@ -96,7 +101,7 @@ export class Game {
       if (p.dead) continue;
       for (const e of this.enemies) {
         if (Math.abs(p.x - e.x) < 24 && Math.abs(p.y - e.y) < 20 && e.canBeHit()) {
-          p.dead = true; this._hitEnemy(e, CONFIG.zee.barrage.damage, Math.sign(p.vx), false); break;
+          p.dead = true; this._hitEnemy(e, Math.round(CONFIG.zee.barrage.damage * z.dmgMul), Math.sign(p.vx), false, true); break;
         }
       }
     }
@@ -141,10 +146,12 @@ export class Game {
   update(dt, input) {
     if (this.hitstop > 0) { this.hitstop -= dt; return; }          // freeze for a beat on impact
     const z = this.zee;
+    this._escTick(dt);
     z.update(dt, input, this.bounds);
     this._zeeDust(dt);
     for (const ev of z.events.splice(0)) {
       if (ev.type === 'slam') {
+        this._escHurt();
         this._impact(z.x, z.y, 14, ev.dmg, '#ff5a4a', 1.5);
         this._burst(z.x, z.y, 4, 14, ['#d8d2ea', '#9b94b4'], 120, 'dust');
         this.shake = 9; this.hitstop = Math.max(this.hitstop, 0.11); sfx.thud(); try { navigator.vibrate && navigator.vibrate(50); } catch (e) { /* ok */ }
@@ -156,6 +163,7 @@ export class Game {
       T.step = 0; return;
     }
     for (const e of this.enemies) e.update(dt, this);
+    this._items(dt);
     this._separate(dt);
     this._zeeAttacks(); this._papers(); this._shots(dt);
     this.enemies = this.enemies.filter((e) => !e.remove);
@@ -163,7 +171,7 @@ export class Game {
     this.shake = Math.max(0, this.shake - dt * 22);
     z.squash = Math.max(0, (z.squash || 0) - dt * 6);
     // sandbox: she gets back up after being knocked out
-    if (z.state === 'defeat' && z.done) { this.reviveT += dt; if (this.reviveT > 2.2) { z.hp = CONFIG.zee.maxHp; z.z = 0; z.vz = 0; z._enter('idle'); z.invuln = 1.2; this.reviveT = 0; } }
+    if (z.state === 'defeat' && z.done) { this.reviveT += dt; if (this.reviveT > 2.2) { z.hp = CONFIG.zee.maxHp; z.z = 0; z.vz = 0; z._enter('idle'); z.invuln = 1.2; this.reviveT = 0; this.esc = 0; } }
     else this.reviveT = 0;
     // particles
     for (const p of this.parts) {
@@ -188,6 +196,91 @@ export class Game {
       this.parts.push({ type, x, y, z, vx: Math.cos(a) * s, vz: dust ? Math.abs(Math.sin(a)) * s * 0.4 : Math.sin(a) * s * 0.8, t: 0, life: dust ? 0.5 + Math.random() * 0.3 : 0.22 + Math.random() * 0.12, color: colors[i % colors.length], g: dust ? 0 : 500, drag: dust ? 0.96 : 0.9 });
     }
   }
+  // ---------- earned special + escalation ----------
+  get escLevel() { return Math.floor(this.esc); }
+  get escMul() { return 1 + CONFIG.escalation.enemyAggr * this.escLevel; }
+  // every landed hit charges the special (the barrage's own hits don't, or it would refill itself) and builds escalation
+  _earn(kind, viaSpecial) {
+    const S = CONFIG.special, X = CONFIG.escalation;
+    if (!viaSpecial) this.zee.addSpecial(kind === 'kill' ? S.perKill : kind === 'knock' ? S.perKnock : S.perHit);
+    this._escAdd(kind === 'kill' ? X.perKill : kind === 'knock' ? X.perKnock : X.perHit);
+    this.escIdle = 0;
+  }
+  _escAdd(d) {
+    const before = this.escLevel; this.esc = Math.min(CONFIG.escalation.max, this.esc + d);
+    if (this.escLevel > before) {
+      const z = this.zee;
+      this._text(z.x, z.y, 96, 'ESCALATION ' + this.escLevel + '!', this.escLevel >= 3 ? '#ff5a3c' : '#ffb03c');
+      this._burst(z.x, z.y, 30, 14, ['#ffb03c', '#ffffff'], 170, 'spark');
+      this.shake = Math.max(this.shake, 3); sfx.levelup();
+    }
+  }
+  // Zee got hurt: she gets a little special charge back (comeback), but loses one escalation level
+  _escHurt() {
+    const z = this.zee, X = CONFIG.escalation;
+    z.addSpecial(CONFIG.special.perHurt);
+    if (this.esc > 0) {
+      const before = this.escLevel; this.esc = Math.max(0, this.esc - X.hurtLoss);
+      if (this.escLevel < before) this._text(z.x, z.y, 96, 'ESCALATION DOWN', '#9aa3c9');
+    }
+    this.escIdle = 0;
+  }
+  _escTick(dt) {
+    const z = this.zee, X = CONFIG.escalation, L = this.escLevel;
+    z.dmgMul = 1 + X.zeeDmg * L; z.chargeMul = 1 + X.chargeBonus * L;
+    this.escIdle += dt;
+    if (this.escIdle > X.idleAfter && this.enemies.length && this.esc > 0) this.esc = Math.max(0, this.esc - X.decay * dt);   // fighting stopped: it cools off
+    if (L >= 2 && z.state !== 'defeat' && Math.random() < dt * (L >= 3 ? 14 : 7)) {                                            // embers rising off her at level 2+
+      this.parts.push({ type: 'ember', x: z.x + (Math.random() - 0.5) * 16, y: z.y, z: z.z + 8 + Math.random() * 40, vx: (Math.random() - 0.5) * 10, vz: 28 + Math.random() * 30, t: 0, life: 0.6, color: L >= 3 ? '#ff4a2a' : '#ffb03c' });
+    }
+  }
+
+  // ---------- iced coffee ----------
+  _maybeCoffee(e) {
+    const K = CONFIG.coffee, z = this.zee, b = this.bounds;
+    if (this.items.filter((i) => i.type === 'coffee').length >= K.maxOnFloor) return;
+    let p = z.hp <= K.lowHpPct * CONFIG.zee.maxHp ? K.chanceLow : K.chance;
+    if (e.heavy) p += K.heavyBonus;
+    if (Math.random() < p) this.items.push({ type: 'coffee', x: Math.max(b.minX + 12, Math.min(b.maxX - 12, e.x)), y: Math.max(b.minY, Math.min(b.maxY, e.y)), z: 26, vz: 190, t: 0, msgT: -9 });
+  }
+  _items(dt) {
+    const z = this.zee, K = CONFIG.coffee, maxHp = CONFIG.zee.maxHp;
+    const canPick = !['defeat', 'down', 'getup', 'held', 'thrown'].includes(z.state) && z.z < 30;
+    for (const it of this.items) {
+      it.t += dt;
+      if (it.z > 0 || it.vz > 0) { it.vz -= 900 * dt; it.z += it.vz * dt; if (it.z <= 0) { it.z = 0; it.vz = it.vz < -120 ? -it.vz * 0.35 : 0; } }   // pops out and bounces once
+      if (!canPick || it.t < 0.35 || Math.abs(it.x - z.x) > K.pickupX || Math.abs(it.y - z.y) > K.pickupY) continue;
+      if (z.hp >= maxHp) { if (it.t - it.msgT > 1.6) { it.msgT = it.t; this._text(z.x, z.y, 84, 'HP FULL', '#9aa3c9'); } continue; }   // stays on the floor for later
+      const got = Math.min(K.heal, maxHp - z.hp); z.hp += got; it.gone = true;
+      this._text(z.x, z.y, 88, '+' + got + ' HP', '#8be28b');
+      this._burst(z.x, z.y, 36, 12, ['#8be28b', '#ffffff'], 140, 'spark'); sfx.coffee();
+    }
+    this.items = this.items.filter((it) => !it.gone && it.t < K.life);
+  }
+  // an iced coffee drawn in code: clear cup, milk and coffee, ice cubes, lid and an orange straw, glowing and bobbing
+  _drawItem(ctx, it) {
+    if (CONFIG.coffee.life - it.t < 3 && Math.floor(it.t * 9) % 2 === 0) return;      // about to vanish: blinks
+    const bob = it.z + (it.z <= 0 ? 4 + Math.sin(it.t * 5) * 1.6 : 4), x = Math.round(it.x), y = Math.round(it.y - bob);
+    ctx.globalAlpha = 0.5; ctx.drawImage(SOFT, it.x - 8, it.y - 2.5, 16, 5);
+    ctx.globalAlpha = 0.18 + 0.12 * (0.5 + 0.5 * Math.sin(it.t * 6)); ctx.fillStyle = '#9dfbff';
+    ctx.beginPath(); ctx.ellipse(x, y - 6, 11, 13, 0, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#10101a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 1, y - 13); ctx.lineTo(x + 4, y - 21); ctx.stroke();
+    ctx.strokeStyle = '#ff8a1c'; ctx.lineWidth = 1.4; ctx.stroke();
+    const cup = (inset, fill) => {
+      ctx.beginPath(); ctx.moveTo(x - 6 + inset, y - 12 + inset); ctx.lineTo(x + 6 - inset, y - 12 + inset);
+      ctx.lineTo(x + 4.6 - inset, y + 1 - inset); ctx.lineTo(x - 4.6 + inset, y + 1 - inset); ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+    };
+    cup(0, '#10101a'); cup(1, '#d6ecf7');
+    ctx.save(); ctx.beginPath(); ctx.moveTo(x - 5, y - 12); ctx.lineTo(x + 5, y - 12); ctx.lineTo(x + 3.6, y); ctx.lineTo(x - 3.6, y); ctx.closePath(); ctx.clip();
+    ctx.fillStyle = '#c99a6a'; ctx.fillRect(x - 6, y - 10, 12, 4);
+    ctx.fillStyle = '#6b3f23'; ctx.fillRect(x - 6, y - 6, 12, 8);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(x - 3.5, y - 9.5, 3, 3); ctx.fillRect(x + 1, y - 7.5, 3, 3); ctx.fillRect(x - 2, y - 4, 3, 3);
+    ctx.restore();
+    ctx.fillStyle = '#10101a'; ctx.fillRect(x - 7, y - 14, 14, 3.4); ctx.fillStyle = '#f4f6ff'; ctx.fillRect(x - 6, y - 13.2, 12, 1.8);
+    const tw = Math.max(0, Math.sin(it.t * 7)); ctx.globalAlpha = tw; ctx.fillStyle = '#ffffff';   // twinkle so it catches the eye
+    ctx.fillRect(x + 7, y - 17, 1.6, 5); ctx.fillRect(x + 5.3, y - 15.3, 5, 1.6); ctx.globalAlpha = 1;
+  }
+
   // sweat drops flung off on a heavy hit (away from the punch)
   _sweat(x, y, z, dir, n) {
     for (let i = 0; i < n; i++) this.parts.push({ type: 'drop', x, y, z: z + Math.random() * 10, vx: dir * (50 + Math.random() * 90), vz: 90 + Math.random() * 110, t: 0, life: 0.45, color: '#cfe8ff', g: 520, drag: 0.98 });
@@ -228,6 +321,7 @@ export class Game {
   // ---------- drawing ----------
   draw(ctx, alpha) {
     const z = this.zee;
+    for (const it of this.items) this._drawItem(ctx, it);
     const list = [{ y: z.py !== undefined ? z.py + (z.y - z.py) * alpha : z.y, d: () => this._scaled(ctx, z, alpha, () => z.draw(ctx, alpha)) }];
     for (const e of this.enemies) list.push({ y: e.py !== undefined ? e.py + (e.y - e.py) * alpha : e.y, d: () => this._scaled(ctx, e, alpha, () => e.draw(ctx, alpha)) });
     list.sort((a, b) => a.y - b.y);
@@ -284,6 +378,8 @@ export class Game {
       ctx.beginPath(); ctx.moveTo(p.x - r, py); ctx.lineTo(p.x, py - w); ctx.lineTo(p.x + r, py); ctx.lineTo(p.x, py + w); ctx.closePath(); ctx.fill();
       ctx.beginPath(); ctx.moveTo(p.x, py - r * 0.8); ctx.lineTo(p.x + w, py); ctx.lineTo(p.x, py + r * 0.8); ctx.lineTo(p.x - w, py); ctx.closePath(); ctx.fill();
       ctx.globalAlpha = (1 - k) * 0.7; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, py, w * 1.3, 0, 6.283); ctx.fill();
+    } else if (p.type === 'ember') {
+      ctx.globalAlpha = 1 - k; ctx.fillStyle = p.color; ctx.fillRect(p.x - 1, py - 1, 2, 2);
     } else if (p.type === 'drop') {
       ctx.globalAlpha = 1 - k; ctx.fillStyle = p.color; ctx.beginPath(); ctx.ellipse(p.x, py, 1.4, 2.4, Math.atan2(-p.vz, p.vx) + 1.57, 0, 6.283); ctx.fill();
     } else if (p.type === 'puff') {
