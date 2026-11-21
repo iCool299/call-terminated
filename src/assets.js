@@ -1,6 +1,6 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js?v=202611212056';
+import { CONFIG } from './config.js?v=202611212335';
 
 // Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
 export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -152,8 +152,9 @@ function litFrame(character, anim, frame, face) {
   return p;
 }
 
-export function drawAnim(ctx, character, anim, frame, x, y, face, alpha = 1, tint = 0) {
-  if (LOOK.on && alpha > 0.5) return drawLit(ctx, character, anim, frame, x, y, face, alpha, tint);
+export function drawAnim(ctx, character, anim, frame, x, y, face, alpha = 1, tint = 0, glow = 0) {
+  // lit look for everything except faint motion-trail ghosts (a threshold that solid sprites never cross, so the look never blinks on and off)
+  if (LOOK.on && alpha > 0.4) return drawLit(ctx, character, anim, frame, x, y, face, alpha, tint, glow);
   const { cw, ch, anchor, scale } = character;
   const [sx, sy] = srcOf(anim, frame, cw, ch);
   const dw = cw * scale, dh = ch * scale, ax = anchor.x * scale, ay = anchor.y * scale;
@@ -178,7 +179,7 @@ export function drawAnim(ctx, character, anim, frame, x, y, face, alpha = 1, tin
   if (alpha !== 1 || red) ctx.globalAlpha = 1;
 }
 
-function drawLit(ctx, character, anim, frame, x, y, face, alpha, tint) {
+function drawLit(ctx, character, anim, frame, x, y, face, alpha, tint, glow = 0) {
   const { cw, ch, anchor, scale } = character;
   const p = litFrame(character, anim, frame, face);
   const px = character.px || 1;
@@ -192,5 +193,6 @@ function drawLit(ctx, character, anim, frame, x, y, face, alpha, tint) {
   ctx.globalAlpha = alpha;
   ctx.drawImage(S1, 0, 0, W, H, -ax, -ay, W * scale, H * scale);
   if (red) { ctx.globalAlpha = alpha * ta; ctx.drawImage(red, 0, 0, cw, ch, -anchor.x * scale, -anchor.y * scale, cw * scale, ch * scale); }
+  if (glow > 0.01) { ctx.globalAlpha = alpha * glow; ctx.drawImage(tinted(character, anim, frame, true), 0, 0, cw, ch, -anchor.x * scale, -anchor.y * scale, cw * scale, ch * scale); }   // soft white glow (invulnerable)
   ctx.restore();
 }

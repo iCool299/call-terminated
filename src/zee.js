@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611212056';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212056';
+import { CONFIG } from './config.js?v=202611212335';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212335';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -372,7 +372,8 @@ export class Zee {
     }
     // soft pulse while invulnerable after a hit (she never vanishes completely)
     const blink = this.flash <= 0 && this.invuln > 0 && this.state !== 'dodge';
-    drawAnim(ctx, this.character, this.anim, this.frame, x, y - lift, this.face, blink ? 0.55 + 0.35 * Math.cos(this.invuln * 40) : 1, this.flash * 6);
+    // invulnerable: she stays fully solid with a gentle white glow pulsing over her (no see-through blinking)
+    drawAnim(ctx, this.character, this.anim, this.frame, x, y - lift, this.face, 1, this.flash * 6, blink ? 0.14 + 0.12 * Math.cos(this.invuln * 14) : 0);
     this._drawPapers(ctx);
   }
 
