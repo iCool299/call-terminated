@@ -40,7 +40,7 @@ function Get-EnemyAnims($grab, $hasW = $false, $hasF = $false) {
         @{ name = 'get_up';    strip = 'c'; from = 10; to = 15; fps = 12; loop = $false },
         @{ name = 'defeat';    strip = 'd'; from = 0;  to = 7;  fps = 10; loop = $false }
     )
-    if ($hasF) { $a[0] = @{ name = 'idle'; strip = 'f'; from = 0; to = 11; fps = 8; loop = $true } }
+    if ($hasF) { $a += @{ name = 'flex'; strip = 'f'; from = 0; to = 11; fps = 9; loop = $false } }   # navy: shown now and then while standing (enemy.js)
     if ($grab) {
         # sheet g frame numbers (1-based): 1 neutral | 2 coil, 3 lunge, 4 CLAMP, 5-6 hoist, 7 overhead | 7-9 hold (ping-pong loop) | 10-11 wind-up, 12 heave, 13 RELEASE, 14-16 recover
         $a += @{ name = 'grab';  strip = 'g'; from = 1; to = 6;  fps = 12; loop = $false; active = @(2) }

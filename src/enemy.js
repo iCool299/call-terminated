@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611211857';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211857';
-import { SOFT } from './zee.js?v=202611211857';
+import { CONFIG } from './config.js?v=202611211930';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211930';
+import { SOFT } from './zee.js?v=202611211930';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -124,11 +124,11 @@ export class Enemy {
   // A change of facing waits a moment (and for the body to slow down), so a turn-around reads as a real turn.
   _facing(z, dt, moving) {
     let want = this.face;
-    if (moving && Math.abs(this.vw) > 14) want = sgn(this.vw);
-    else if (Math.abs(z.x - this.x) > 5) want = z.x > this.x ? 1 : -1;
+    if (moving && Math.abs(this.vw) > 10) want = sgn(this.vw);                 // always face the way it is walking
+    else if (Math.abs(z.x - this.x) > 5) want = z.x > this.x ? 1 : -1;          // standing: face her
     if (want === this.face) { this.turnT = 0; return; }
     this.turnT += dt;
-    if (this.turnT >= this.style.turn) { this.face = want; this.turnT = 0; }
+    if (this.turnT >= 0.05) { this.face = want; this.turnT = 0; }               // a quick turn, never walking backwards
   }
 
   _back(cd) { this.state = 'idle'; this._play('idle'); this.vw = 0; this.vh = 0; this.cool = Math.max(this.cool, cd / this.aggr); }
@@ -165,29 +165,34 @@ export class Enemy {
       this.evadeId = z.attackId;
       if (Math.random() < this.evadeChance) {
         this._faceZee(z); this.state = 'evade'; this.evadeT = 0.28; this._play('walk');
-        this.mx = -sgn(dx) * 0.9; this.my = (ady > 6 ? -sgn(dy) : (Math.random() < 0.5 ? 1 : -1)) * 1.1; return;
+        this.mx = 0; this.my = (ady > 6 ? -sgn(dy) : (Math.random() < 0.5 ? 1 : -1)) * 1.4; return;     // sidestep in depth (never back away)
       }
     }
-    // pick a spot: melee fighters stand in front of her on their own side; if that side is crowded they go around to the other
+    // ---- pick a spot (always closing in on her, never backing off) ----
+    // One enemy takes her front; the next one works round to her BACK (the side she is not facing) to hit her from behind.
+    // A lone enemy also tries to slip behind her now and then. To get round it detours through depth instead of walking through her.
     this.decideT -= dt; this.sideT -= dt;
+    const mySide = sgn(this.x - z.x), behind = -(z.face || 1);
     if (this.decideT <= 0) {
-      this.decideT = 0.18;
+      this.decideT = 0.15;
       if (this.sideT <= 0) {
-        const crowd = g.enemies.filter((o) => o !== this && o.state !== 'dead' && sgn(o.x - z.x) === this.side && Math.abs(o.x - z.x) < 90 && Math.abs(o.y - this.y) < 40).length;
-        if (crowd >= 1 && Math.random() < 0.7) { this.side = -this.side; this.sideT = 2.2; }       // flank
+        const front = g.enemies.some((o) => o !== this && !['dead', 'down', 'spawn'].includes(o.state) && sgn(o.x - z.x) === -behind && Math.abs(o.x - z.x) < 110);
+        if (front) this.side = behind;                                                                  // someone is already in her face: go round the back
+        else if (Math.random() < (this.heavy ? 0.25 : 0.4)) this.side = behind;                         // flank on my own
+        else this.side = mySide;
+        this.sideT = rnd(1.6, 2.8);
       }
-      const wait = g.attackerCount() >= g.maxAttackers && !this.attacking;                        // too many already attacking: circle and wait
-      let tx, mx = 0, my = 0;
+      const wait = g.attackerCount() >= g.maxAttackers && !this.attacking && this.side !== behind;   // the attack slots are full: hover just outside her reach (backstabbers never wait)
+      let mx = 0, my = 0;
       if (calm) { this.mx = 0; this.my = 0; }
       else {
-        if (this.prefersRange) {
-          const want = E.keepDistance * this.side;
-          tx = z.x + want;
-          if (adx < E.attackRange + 30) tx = z.x + this.side * (E.attackRange * 0.8);              // she is on top of me: fight
-        } else tx = z.x + this.side * (wait ? E.attackRange + 70 : E.attackRange * 0.8);
-        const ex = tx - this.x;
-        if (Math.abs(ex) > 7) mx = sgn(ex) * (this.heavy && Math.abs(ex) > 170 ? 1.35 : 1);       // heavies charge in from afar
-        if (ady > 5) my = sgn(dy) * 0.85;
+        const tx = z.x + this.side * (wait ? E.attackRange + 34 : E.attackRange * 0.8);
+        let ty = z.y;
+        if (mySide !== this.side && adx < 95) ty = z.y + (this.lane || (this.lane = (Math.random() < 0.5 ? -1 : 1))) * 34;   // going round her: swing out in depth first
+        else this.lane = 0;
+        const ex = tx - this.x, ey = ty - this.y;
+        if (Math.abs(ex) > 7) mx = sgn(ex) * (Math.abs(ex) > 170 ? 1.3 : 1);                            // charge in from afar
+        if (Math.abs(ey) > 5) my = sgn(ey) * (mySide !== this.side ? 1.2 : 0.85);
         this.mx = mx; this.my = my;
       }
     }
@@ -200,7 +205,10 @@ export class Enemy {
         if (Math.abs(ox) < 30 && Math.abs(oy) < 12) { const k = 1 - Math.abs(ox) / 30; tvx += (ox === 0 ? (this.id < o.id ? 1 : -1) : sgn(ox)) * 70 * k; tvy += (oy === 0 ? 1 : sgn(oy)) * 40 * k; }
       }
     }
-    if (this.turnT > 0) { tvx *= 0.25; tvy *= 0.5; }                  // braking while it turns round
+    if (!calm && adx > 140 && tvx !== 0 && sgn(tvx) !== sgn(dx)) tvx = 0;   // far from her: never drift further away
+    if (this.turnT > 0 || (Math.abs(this.vw) > 10 && Math.abs(tvx) > 10 && sgn(tvx) !== sgn(this.vw))) {   // turning round: stop, turn, then go
+      tvx = 0; tvy *= 0.6; if (Math.abs(this.vw) < 25) this.vw = 0;
+    }
     this._steer(tvx, tvy, dt);
     const spd = Math.hypot(this.vw, this.vh), moving = spd > 8;
     if (moving) {
@@ -213,17 +221,24 @@ export class Enemy {
     } else {
       this.still += dt;
       if (this.state === 'walk' && this.still > 0.15) { this.state = 'idle'; this._play('idle'); }
+      // navy shows off: every few seconds of standing he flexes and admires his bicep once, then back to his normal idle
+      if (this.anims.flex && this.state === 'idle') {
+        if (this.animName === 'flex') { if (this.done) this._play('idle'); }
+        else if (this.still > (this.flexAt || (this.flexAt = rnd(2.5, 5)))) { this._play('flex'); this.flexAt = this.still + rnd(4, 7); }
+      }
     }
     if (!calm) this._facing(z, dt, moving);
     if (calm || this.cool > 0 || z.state === 'held') return;
     // ---- choose an attack ----
     const inRange = adx < E.attackRange + 8 && ady < E.engageY + 4;
-    if (inRange && g.attackerCount() < g.maxAttackers) {
+    const atHerBack = sgn(this.x - z.x) === -(z.face || 1);                    // she is looking the other way: hit her from behind, no waiting
+    if (inRange && atHerBack) this.cool = Math.min(this.cool, 0.05);
+    if (inRange && (g.attackerCount() < g.maxAttackers || atHerBack)) {
       this._faceZee(z); this.turnT = 0;
       if (this.canGrab && Math.random() < E.grabChance && z.canBeGrabbed()) { this.state = 'grab'; this._play('grab'); g.sfx.grab(); return; }
       this.combo = this.combo > 0 ? this.combo : (Math.random() < 0.6 ? Math.floor(rnd(1, 3.4)) : 0);   // 0-2 follow-up hits
       this._startMelee(g);
-    } else if (!this.canGrab && adx > 130 && adx < 460 && ady < 9 && (this.prefersRange || Math.random() < 0.02)) {
+    } else if (!this.canGrab && adx > 130 && adx < 460 && ady < 9 && Math.random() < (this.prefersRange ? 0.05 : 0.015)) {   // a headset on the way in
       this.state = 'ranged'; this.fired = false; this._play('throw_headset'); this._faceZee(z);
     }
   }

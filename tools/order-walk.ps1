@@ -67,6 +67,19 @@ $tour = [int[]][WalkOrder]::BestTour($D, $mm); $tourCost = [WalkOrder]::Cost($D,
 # direction: keep the one that follows the generated order more often
 $inc = 0; $dec = 0; for ($k = 0; $k -lt $mm; $k++) { $x = $tour[$k]; $y = $tour[($k + 1) % $mm]; if ($keep[$y] -gt $keep[$x]) { $inc++ } else { $dec++ } }
 if ($dec -gt $inc) { [array]::Reverse($tour) }
+# 2) drop near-duplicate neighbours (the same pose twice makes the walk hitch): while two neighbours differ much less than a normal step, remove one
+$st0 = @(); for ($k = 0; $k -lt $tour.Count; $k++) { $ia = [int]$tour[$k]; $ib = [int]$tour[($k + 1) % $tour.Count]; $st0 += $D[$ia, $ib] }
+$med0 = @($st0 | Sort-Object)[[int]($st0.Count / 2)]
+$t2 = New-Object System.Collections.ArrayList; foreach ($v in $tour) { [void]$t2.Add([int]$v) }
+$dups = @()
+while ($t2.Count -gt 6) {
+    $bestK = -1; $bestV = 1e9
+    for ($k = 0; $k -lt $t2.Count; $k++) { $ia = [int]$t2[$k]; $ib = [int]$t2[($k + 1) % $t2.Count]; $v = $D[$ia, $ib]; if ($v -lt $bestV) { $bestV = $v; $bestK = ($k + 1) % $t2.Count } }
+    if ($bestV -ge 0.62 * $med0) { break }
+    $dups += $keep[$t2[$bestK]]; $t2.RemoveAt($bestK)
+}
+if ($dups.Count) { Write-Host ("  near-duplicate frames dropped: [{0}]" -f ($dups -join ',')); $dropped = @($dropped + $dups) }
+$tour = [int[]]$t2.ToArray(); $mm = $tour.Count
 $final = @($tour | ForEach-Object { $keep[$_] })
 $steps = @(); for ($k = 0; $k -lt $mm; $k++) { $ia = [int]$tour[$k]; $ib = [int]$tour[($k + 1) % $mm]; $dv = $D[$ia, $ib]; $steps += [math]::Round($dv, 1) }
 $med = @($steps | Sort-Object)[[int]($mm / 2)]; $out = @($steps | Where-Object { $_ -gt 1.6 * $med }).Count

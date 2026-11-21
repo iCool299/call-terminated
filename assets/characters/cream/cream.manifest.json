@@ -50,8 +50,8 @@
                        "walk":  {
                                     "strip":  "w",
                                     "from":  0,
-                                    "to":  8,
-                                    "fps":  10.5,
+                                    "to":  7,
+                                    "fps":  9.33,
                                     "loop":  true
                                 },
                        "punch":  {

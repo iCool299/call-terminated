@@ -24,3 +24,5 @@ The original Claude Code session ("Office Mayhem game design") disconnected whil
 After any work, add a dated line under "Decisions and changes" and adjust "Next steps".
 
 - 2026-11-21 (walk redraw): regenerated two-step walk sheets for all 8 enemies (+ navy flex idle sheet 'f') via ChatGPT; raw in sprites/agents/raw/<id>_w.png, navy_f.png. tools/order-walk.ps1 now drops standing-still frames, finds the smoothest closed loop and rewrites manifest walk frames/fps (per-enemy manual drops in tools/walk-drop-<id>.txt, e.g. sporty). tools/legid.ps1 = experimental near/far leg detector (too weak on dark clothes, not used). Known limit: near/far leg identity can't be verified automatically; loops were checked by eye frame by frame.
+
+- 2026-11-21 (AI+walk pass): enemies always close in (no retreat/keep-distance), one takes Zee's front while others go round her back (depth detour), attack instantly from behind, always face their walking direction (no backwards walking; evade = depth sidestep). Walk loops pruned of near-duplicate frames (tools/walk-drop-<id>.txt from visual review; order-walk also auto-prunes). Navy: normal idle + occasional bicep flex ('flex' anim).
