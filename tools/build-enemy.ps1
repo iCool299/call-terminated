@@ -16,7 +16,7 @@ if ($e.cell) { $cw = $e.cell[0]; $ch = $e.cell[1] }       # grabbers get a talle
 [Zee2.Pipe]::Prefix = "${Id}_"
 
 $sheets = @()
-foreach ($s in (Get-EnemySheets $e.grab $(if ($e.wRows) { $e.wRows } else { 3 }))) {
+foreach ($s in (Get-EnemySheets $e.grab $(if ($e.wRows) { $e.wRows } else { 3 }) ([bool]$e.flex))) {
     $raw = "sprites\agents\raw\${Id}_$($s.name).png"
     if (-not (Test-Path (Join-Path $root $raw))) { Write-Host "missing $raw - skipped"; continue }
     $c = New-Object Zee2.SheetCfg
@@ -48,7 +48,7 @@ $have = @($sheets | % { $_.Name })
 $strips = [ordered]@{}
 foreach ($s in $sheets) { $strips[$s.Name] = [ordered]@{ file = "${Id}_$($s.Name).png"; frames = $s.N; cols = [Math]::Min($s.N, [Zee2.Pipe]::MAX_COLS) } }
 $anims = [ordered]@{}
-foreach ($a in (Get-EnemyAnims $e.grab ($have -contains 'w'))) {
+foreach ($a in (Get-EnemyAnims $e.grab ($have -contains 'w') ($have -contains 'f'))) {
     if ($have -notcontains $a.strip) { continue }
     $x = [ordered]@{ strip = $a.strip; from = $a.from; to = $a.to; fps = $a.fps; loop = [bool]$a.loop }
     if ($a.pingpong) { $x.pingpong = $true }

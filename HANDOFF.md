@@ -13,8 +13,14 @@ The original Claude Code session ("Office Mayhem game design") disconnected whil
 ## Decisions and changes made in the other chat
 - 2026-11-21: rebuilt the walk strip (`<id>_w.png` + manifest `walk` entry) for all 8 enemies: frames stabilised (torso x fixed, smooth head bob), flow-interpolated in-betweens only where artifact-free, palette-snapped. Frame counts now 15-24 per enemy (manifest `to`/`fps` updated, same ~0.57 s loop). Originals are in `tools/walk_backup_20261121/`. NOT yet tested in the game or pushed. `tools/build-enemy.ps1` regenerates `_w` strips from the raw sheets, so do not re-run it for walk or these edits are overwritten.
 
+- 2026-11-21 (later): walk strips rebuilt as 12 frames each (like Zee; legs morphed around the hip). enemy.js now: walk loop advanced by distance walked (no foot skating, per-enemy `WALK_STYLE` step length/lean/bounce/sway/speed), eased acceleration, enemies face the way they walk (no more walking backwards while looking at Zee; brief braking turn), evade = backpedal (reverse walk loop), enemies nudge apart instead of stacking. `tools/publish-walk.bat` = release + push (log in tools/publish-walk.log).
+
+- 2026-11-21 (verified): live build 202611211713 is pushed; in the local preview all 8 enemies walk with the 12-frame loop, no console errors.
+
 ## Next steps (from the user)
 - (none stated yet; add here)
 
 ## Rule for updating
 After any work, add a dated line under "Decisions and changes" and adjust "Next steps".
+
+- 2026-11-21 (walk redraw): regenerated two-step walk sheets for all 8 enemies (+ navy flex idle sheet 'f') via ChatGPT; raw in sprites/agents/raw/<id>_w.png, navy_f.png. tools/order-walk.ps1 now drops standing-still frames, finds the smoothest closed loop and rewrites manifest walk frames/fps (per-enemy manual drops in tools/walk-drop-<id>.txt, e.g. sporty). tools/legid.ps1 = experimental near/far leg detector (too weak on dark clothes, not used). Known limit: near/far leg identity can't be verified automatically; loops were checked by eye frame by frame.
