@@ -16,7 +16,7 @@
 //   (temporary geometry below), or an image URL string (the final art: 1 image pixel = 1 world unit, so the Quality
 //   Department's arch/props art is 1800 x 507 px; far is 1170 px wide and fore is 1908 px wide at the current speeds).
 //   doorRight is the door to the NEXT room: while it is locked the player cannot pass it; no door (or unlocked) = open.
-import { CONFIG } from './config.js?v=202611220038';
+import { CONFIG } from './config.js?v=202611220043';
 
 const C = CONFIG.camera, F = CONFIG.floor;
 export const LAYER_H = 507;                       // layer height in pixels (the view shows 506.25)

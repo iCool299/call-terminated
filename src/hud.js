@@ -1,8 +1,8 @@
 // Arcade HUD (early-2000s style): angled panels with white outlines, glossy bars, bold italic type.
 // Built from separate pieces drawn in game units, so it scales with the canvas at any resolution.
 // Top-left: portrait + HP bar + SP meter. Bottom-left: KO counter. All values come from the live game state.
-import { CONFIG } from './config.js?v=202611220038';
-import { VERSION } from './assets.js?v=202611220038';
+import { CONFIG } from './config.js?v=202611220043';
+import { VERSION } from './assets.js?v=202611220043';
 
 const portrait = new Image();
 portrait.src = 'assets/ui/zee_portrait.png?v=' + VERSION;
@@ -119,17 +119,7 @@ export function drawHud(ctx, zee, game, dt) {
   label(ctx, 'KO', kx + 13, ky + kh / 2 + 0.5, 10, kg, NAVY, 2.2);
   label(ctx, String(game.kos), kx + 56, ky + kh / 2 + 0.5, 10, WHITE, NAVY, 2.2);
 
-  // ---- escalation meter: three segments (yellow, orange, red) next to the KO badge; pulses at the top level ----
-  const ex = kx + kw + 5, ey = ky + 2.5, ew = 122, eh = 12, es = 4;
-  const lvl = Math.floor(game.esc), maxed = lvl >= 3, ep = maxed ? 0.8 + 0.2 * Math.sin(performance.now() / 110) : 1;
-  panel(ctx, ex, ey, ew, eh, es, NAVY, maxed ? '#ff8a6a' : WHITE);
-  label(ctx, 'ESCALATION', ex + 6, ey + eh / 2 + 0.5, 6, lvl > 0 ? '#ffb03c' : WHITE, NAVY, 2);
-  const esx = ex + 50, esw = (ew - 56) / 3, TOP = ['#ffe27a', '#ffc04a', '#ff9a7a'], BOT = ['#f0b410', '#f07a10', '#e0242c'];
-  for (let i = 0; i < 3; i++) {
-    const x = esx + i * esw, fill = Math.max(0, Math.min(1, game.esc - i));
-    slant(ctx, x, ey + 2.5, esw - 2, eh - 5, 2.5, 1.5); ctx.fillStyle = '#3a1d2a'; ctx.fill();
-    if (fill > 0) { ctx.globalAlpha = ep; gloss(ctx, x, ey + 2.5, (esw - 2) * fill, eh - 5, 2.5, TOP[i], BOT[i]); ctx.globalAlpha = 1; }
-  }
+  // (the escalation mechanic still runs, see game.js; it just has no bar. The level-up text and embers show it.)
   ctx.restore();
   ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
 }
