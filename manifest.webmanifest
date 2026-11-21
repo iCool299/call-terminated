@@ -1,6 +1,6 @@
 {
-  "name": "Escalation Brawl",
-  "short_name": "Escalation",
+  "name": "CALL TERMINATED",
+  "short_name": "Call Terminated",
   "start_url": "./index.html",
   "display": "fullscreen",
   "orientation": "landscape",

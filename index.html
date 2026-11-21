@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Escalation Brawl</title>
+<title>CALL TERMINATED</title>
 <style>
   :root { --bg:#0f0e15; --panel:#1d1a28; --line:#363147; --text:#ece8f5; --mute:#9a93ad; --accent:#ff8a5c; --safe-r:env(safe-area-inset-right,0px); --safe-b:env(safe-area-inset-bottom,0px); --safe-l:env(safe-area-inset-left,0px); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; }
@@ -72,6 +72,9 @@
   #anim-list button.on { background:var(--accent); color:#1a1209; border-color:var(--accent); }
   .row { display:flex; gap:6px; margin-top:8px; }
   #loading { position:fixed; inset:0; z-index:20; display:grid; place-items:center; background:var(--bg); color:var(--mute); text-align:center; padding:20px; }
+  #loading .lt { font:italic 900 clamp(26px,7vw,54px) "Arial Black","Segoe UI Black","Helvetica Neue",Arial,sans-serif; letter-spacing:.04em; color:#f4f6ff; text-shadow:0 3px 0 #ff8a1c, 0 0 18px rgba(255,138,28,.45); }
+  #loading .ls { margin-top:12px; font:600 13px ui-monospace,Consolas,monospace; color:var(--mute); letter-spacing:.22em; text-transform:uppercase; animation:ctload 1s steps(2,start) infinite; }
+  @keyframes ctload { 50% { opacity:.35 } }
   #rotate { display:none; position:fixed; inset:0; z-index:30; background:var(--bg); color:var(--text); place-items:center; text-align:center; padding:30px; }
   body.portrait.touch #rotate { display:grid; }
 </style>
@@ -123,9 +126,9 @@
 </div>
 
 <div id="rotate"><div><h2>Rotate your phone</h2><p style="color:var(--mute)">This game plays in landscape.</p></div></div>
-<div id="loading">Loading Zee...</div>
+<div id="loading"><div><div class="lt">CALL TERMINATED</div><div class="ls">is loading...</div></div></div>
 
-<script type="module" src="src/main.js?v=202611212351"></script>
+<script type="module" src="src/main.js?v=202611220020"></script>
 </body>
 </html>
 
