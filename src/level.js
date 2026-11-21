@@ -20,8 +20,8 @@
 //   light: { rim, rimAlpha, rimPx, lightX, lightY, wash, washAlpha, feet } = how Zee and the enemies are lit in this room
 //   (rim / wash are [r,g,b]); the game eases from one room's light to the next (see setLight in assets.js).
 //   doorRight is the door to the NEXT room: while it is locked the player cannot pass it; no door (or unlocked) = open.
-import { CONFIG } from './config.js?v=202611220059';
-import { VERSION } from './assets.js?v=202611220059';
+import { CONFIG } from './config.js?v=202611220109';
+import { VERSION } from './assets.js?v=202611220109';
 
 const C = CONFIG.camera, F = CONFIG.floor;
 export const LAYER_H = 507;                       // layer height in pixels (the view shows 506.25)
@@ -208,7 +208,8 @@ export function tempRoom(id, name, width) {
 // the view (Y 506.25), which crops the top ~18 px (the very top of the ceiling) and puts the wall / floor line (image y ~484)
 // at Y ~364 and the furniture feet (image y ~491) at Y ~369, which is where CONFIG.floor.top (366) comes from.
 // The window view, furniture and the door are painted into this one image, so for now it is one layer (no parallax in the windows).
-// THE DOOR (painted in): frame x 1815-1938, y 204-496 in the image = world x 1416-1512 (96 wide), Y 145-373 (228 tall, 1.7x Zee).
+// THE DOOR (painted in, shrunk to a real 0.9 x 2.1 m door): frame x 1831-1923, y 283-497 in the image = world x 1428-1500 (72 wide),
+// Y 207-374 (168 tall, 1.27x Zee). Its foot is at the floor, at Y ~374.
 const R01_SCALE = 0.78, R01_W = 2000, R01_H = 667;
 export function qualityDepartment() {
   return {
