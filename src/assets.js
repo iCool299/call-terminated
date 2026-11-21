@@ -1,6 +1,6 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js?v=202611211950';
+import { CONFIG } from './config.js?v=202611211958';
 
 // Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
 export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -43,8 +43,8 @@ export async function loadCharacter(baseUrl, id = 'zee') {
 }
 
 // Red-tinted copy of a frame (same pixels, coloured red), cached. Drawn over the normal sprite for the "got hit" flash.
-export function tinted(character, anim, frame) {
-  const key = anim.name + ':' + frame;
+export function tinted(character, anim, frame, white = false) {
+  const key = anim.name + ':' + frame + (white ? ':w' : '');
   let s = character.tints.get(key);
   if (s) return s;
   const { cw, ch } = character;
@@ -53,7 +53,7 @@ export function tinted(character, anim, frame) {
   const [sx, sy] = srcOf(anim, frame, cw, ch);
   c.drawImage(anim.img, sx, sy, cw, ch, 0, 0, cw, ch);
   c.globalCompositeOperation = 'source-atop';
-  c.fillStyle = 'rgba(255,24,24,0.72)'; c.fillRect(0, 0, cw, ch);
+  c.fillStyle = white ? 'rgba(255,255,255,0.92)' : 'rgba(255,48,48,0.75)'; c.fillRect(0, 0, cw, ch);
   character.tints.set(key, s);
   return s;
 }
@@ -110,16 +110,17 @@ export function drawAnim(ctx, character, anim, frame, x, y, face, alpha = 1, tin
   x = Math.round(x * px) / px; y = Math.round(y * px) / px;
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   if (alpha !== 1) ctx.globalAlpha = alpha;
-  const red = tint > 0.01 ? tinted(character, anim, frame) : null;
+  // hit flash: a quick white pop for the first instant, then a light red that fades (never a solid red silhouette)
+  const pop = tint > 0.9, red = tint > 0.01 ? tinted(character, anim, frame, pop) : null, ta = pop ? 0.85 : Math.min(1, tint) * 0.5;
   if (face < 0) {
     ctx.save();
     ctx.translate(x, y); ctx.scale(-1, 1);
     ctx.drawImage(anim.img, sx, sy, cw, ch, -ax, -ay, dw, dh);
-    if (red) { ctx.globalAlpha = alpha * Math.min(1, tint); ctx.drawImage(red, 0, 0, cw, ch, -ax, -ay, dw, dh); }
+    if (red) { ctx.globalAlpha = alpha * ta; ctx.drawImage(red, 0, 0, cw, ch, -ax, -ay, dw, dh); }
     ctx.restore();
   } else {
     ctx.drawImage(anim.img, sx, sy, cw, ch, x - ax, y - ay, dw, dh);
-    if (red) { ctx.globalAlpha = alpha * Math.min(1, tint); ctx.drawImage(red, 0, 0, cw, ch, x - ax, y - ay, dw, dh); }
+    if (red) { ctx.globalAlpha = alpha * ta; ctx.drawImage(red, 0, 0, cw, ch, x - ax, y - ay, dw, dh); }
   }
   if (alpha !== 1 || red) ctx.globalAlpha = 1;
 }

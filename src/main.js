@@ -1,11 +1,11 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611211950';
-import { loadCharacter, VERSION } from './assets.js?v=202611211950';
-import { Input } from './input.js?v=202611211950';
-import { Zee } from './zee.js?v=202611211950';
-import { Game } from './game.js?v=202611211950';
-import { ENEMY_IDS } from './enemy.js?v=202611211950';
-import { unlock } from './sfx.js?v=202611211950';
+import { CONFIG } from './config.js?v=202611211958';
+import { loadCharacter, VERSION } from './assets.js?v=202611211958';
+import { Input } from './input.js?v=202611211958';
+import { Zee } from './zee.js?v=202611211958';
+import { Game } from './game.js?v=202611211958';
+import { ENEMY_IDS } from './enemy.js?v=202611211958';
+import { unlock } from './sfx.js?v=202611211958';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -104,26 +104,34 @@ function drawScene(ctx) {
   for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x + .5, F.top); ctx.lineTo(x + .5, H); ctx.stroke(); }
 }
 
+let hudGhost = 1;                                   // the white "recent damage" chunk that drains after a hit
 function drawHud() {
-  // health bar
-  const x = 12, y = 12, bw = 150, bh = 10;
-  ctx.fillStyle = '#10101a'; ctx.fillRect(x - 2, y - 2, bw + 4, bh + 4);
-  ctx.fillStyle = '#3a2430'; ctx.fillRect(x, y, bw, bh);
-  const pct = zee.hp / CONFIG.zee.maxHp;
-  if (zee.flash > 0) { ctx.fillStyle = '#ff5a4a'; ctx.fillRect(x - 2, y - 2, bw + 4, bh + 4); ctx.fillStyle = '#10101a'; ctx.fillRect(x - 1, y - 1, bw + 2, bh + 2); ctx.fillStyle = '#3a2430'; ctx.fillRect(x, y, bw, bh); }
-  ctx.fillStyle = pct > 0.5 ? '#6ad26a' : pct > 0.25 ? '#e8c34a' : '#e2574c';
-  ctx.fillRect(x, y, Math.round(bw * pct), bh);
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 9px ui-monospace, Consolas, monospace';
-  ctx.fillText('ZEE', x, y + bh + 11);
-  ctx.fillText(String(Math.ceil(zee.hp)), x + bw + 6, y + bh - 1);                 // HP number beside the bar
-  // special meter (cooldown)
-  const sp = 1 - zee.cd.special / CONFIG.zee.specialCooldown;
-  ctx.fillStyle = '#10101a'; ctx.fillRect(x - 2, y + 22, 94, 8);
-  ctx.fillStyle = '#2b2740'; ctx.fillRect(x, y + 24, 90, 4);
-  ctx.fillStyle = sp >= 1 ? '#ff6b57' : '#8a7fc9'; ctx.fillRect(x, y + 24, Math.round(90 * sp), 4);
-  if (sp >= 1) { ctx.fillStyle = '#ffb3a8'; ctx.fillText('SPECIAL READY', x + 98, y + 29); }
+  const x = 12, y = 10, bw = 150, bh = 9, k = 1 / 1;
+  const pct = Math.max(0, zee.hp / CONFIG.zee.maxHp);
+  hudGhost = Math.max(pct, hudGhost - 0.012); if (hudGhost < pct) hudGhost = pct;
+  ctx.font = 'bold 9px ui-monospace, Consolas, monospace'; ctx.textAlign = 'left'; ctx.lineWidth = 3; ctx.strokeStyle = '#10101a';
+  // name
+  ctx.strokeText('ZEE', x, y + 7); ctx.fillStyle = '#ffffff'; ctx.fillText('ZEE', x, y + 7);
+  // health bar: frame, dark trough, white damage trail, colour fill with a light top line, HP number inside on the right
+  const by = y + 11;
+  ctx.fillStyle = zee.flash > 0 ? '#ff6a5a' : '#10101a'; ctx.fillRect(x - 2, by - 2, bw + 4, bh + 4);
+  ctx.fillStyle = '#2a1d27'; ctx.fillRect(x, by, bw, bh);
+  ctx.fillStyle = '#f3e9ea'; ctx.fillRect(x, by, Math.round(bw * hudGhost), bh);
+  const col = pct > 0.5 ? '#5fcf6a' : pct > 0.25 ? '#e8c34a' : '#e2574c';
+  ctx.fillStyle = col; ctx.fillRect(x, by, Math.round(bw * pct), bh);
+  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(x, by, Math.round(bw * pct), 2);
+  ctx.font = 'bold 8px ui-monospace, Consolas, monospace'; ctx.textAlign = 'right'; ctx.lineWidth = 3;
+  const hp = String(Math.ceil(zee.hp)); ctx.strokeText(hp, x + bw - 2, by + bh - 1); ctx.fillStyle = '#ffffff'; ctx.fillText(hp, x + bw - 2, by + bh - 1);
+  // special meter: labelled, fills while charging, pulses when ready
+  const sy = by + bh + 6, sw = 96, sp = Math.min(1, 1 - zee.cd.special / CONFIG.zee.specialCooldown);
+  ctx.fillStyle = '#10101a'; ctx.fillRect(x - 2, sy - 2, sw + 4, 8);
+  ctx.fillStyle = '#231f33'; ctx.fillRect(x, sy, sw, 4);
+  const pulse = sp >= 1 ? 0.65 + 0.35 * Math.sin(performance.now() / 160) : 1;
+  ctx.globalAlpha = pulse; ctx.fillStyle = sp >= 1 ? '#ff8a5c' : '#8a7fc9'; ctx.fillRect(x, sy, Math.round(sw * sp), 4); ctx.globalAlpha = 1;
+  ctx.textAlign = 'left'; ctx.font = 'bold 7px ui-monospace, Consolas, monospace'; ctx.lineWidth = 3;
+  const lab = sp >= 1 ? 'SPECIAL READY  [SPACE]' : 'SPECIAL';
+  ctx.strokeText(lab, x + sw + 8, sy + 5); ctx.fillStyle = sp >= 1 ? '#ffc2a6' : '#b7b0d6'; ctx.fillText(lab, x + sw + 8, sy + 5);
 }
-
 const cdCache = {};
 function updateButtons() {       // only touch the DOM when a value actually changed (style writes are expensive on phones)
   for (const [name, el] of Object.entries(cdButtons)) {

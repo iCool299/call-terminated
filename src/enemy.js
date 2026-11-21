@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611211950';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211950';
-import { SOFT } from './zee.js?v=202611211950';
+import { CONFIG } from './config.js?v=202611211958';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211958';
+import { SOFT } from './zee.js?v=202611211958';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -105,7 +105,8 @@ export class Enemy {
         break;
     }
     const b = g.bounds;
-    this.x = Math.max(b.minX - 20, Math.min(b.maxX + 20, this.x));
+    if (this.entering) { if (this.x > b.minX && this.x < b.maxX) this.entering = false; }    // walking in from off-screen
+    else this.x = Math.max(b.minX - 20, Math.min(b.maxX + 20, this.x));
     this.y = Math.max(b.minY, Math.min(b.maxY, this.y));
   }
 
@@ -184,7 +185,9 @@ export class Enemy {
       }
       const wait = g.attackerCount() >= g.maxAttackers && !this.attacking && this.side !== behind;   // the attack slots are full: hover just outside her reach (backstabbers never wait)
       let mx = 0, my = 0;
-      if (calm) { this.mx = 0; this.my = 0; }
+      if (calm) {                                                     // she is beaten: step back off her body and stand around her
+        this.mx = adx < 70 ? -sgn(dx || 1) * 0.6 : 0; this.my = 0;
+      }
       else {
         const tx = z.x + this.side * (wait ? E.attackRange + 34 : E.attackRange * 0.8);
         let ty = z.y;

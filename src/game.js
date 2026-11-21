@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611211950';
-import { Enemy } from './enemy.js?v=202611211950';
-import { SOFT } from './zee.js?v=202611211950';
-import { sfx } from './sfx.js?v=202611211950';
+import { CONFIG } from './config.js?v=202611211958';
+import { Enemy } from './enemy.js?v=202611211958';
+import { SOFT } from './zee.js?v=202611211958';
+import { sfx } from './sfx.js?v=202611211958';
 
 const E = CONFIG.enemy;
 
@@ -39,12 +39,11 @@ export class Game {
 
   spawn(id, character) {
     const z = this.zee, W = CONFIG.view.w;
-    const x = z.x > W / 2 ? 70 + Math.random() * 60 : W - 70 - Math.random() * 60;     // appears on the side away from her
+    const x = z.x > W / 2 ? -40 : W + 40;                                              // walks in from off-screen, on the side away from her
     const y = this.bounds.minY + 10 + Math.random() * (this.bounds.maxY - this.bounds.minY - 20);
     const e = new Enemy(id, character, x, y);
-    e.face = x < z.x ? 1 : -1;
+    e.face = x < z.x ? 1 : -1; e.spawnT = 0; e.state = 'idle'; e.entering = true;
     this.enemies.push(e);
-    this._burst(x, y, 40, 10, ['#c9c4dd', '#8f88aa'], 70, 'dust');
     sfx.spawn();
     return e;
   }
@@ -109,6 +108,31 @@ export class Game {
     this.shots = this.shots.filter((s) => !s.dead);
   }
 
+  // Bodies are solid: enemies never stand inside each other, and never inside Zee (she gets shoved a little too).
+  _separate(dt) {
+    const z = this.zee, solid = (e) => !['dead', 'down', 'spawn', 'hold', 'throw'].includes(e.state) && !e.holdingZee && !e.entering;
+    const B = 30, ZB = 28, DY = 14;
+    for (let i = 0; i < this.enemies.length; i++) {
+      const a = this.enemies[i]; if (!solid(a)) continue;
+      for (let j = i + 1; j < this.enemies.length; j++) {
+        const b = this.enemies[j]; if (!solid(b)) continue;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        if (Math.abs(dy) >= DY || Math.abs(dx) >= B) continue;
+        const push = (B - Math.abs(dx)) / 2, s = dx === 0 ? (i % 2 ? 1 : -1) : Math.sign(dx);
+        a.x -= s * push; b.x += s * push;
+        if (Math.abs(dx) < B * 0.5) { const sy = dy === 0 ? 1 : Math.sign(dy); a.y -= sy * 20 * dt; b.y += sy * 20 * dt; }   // fully stacked: also spread in depth
+      }
+    }
+    if (['held', 'thrown', 'down', 'getup', 'defeat'].includes(z.state) || z.z > 20) return;
+    for (const e of this.enemies) {
+      if (!solid(e) || e.state === 'grab') continue;
+      const dx = e.x - z.x, dy = e.y - z.y;
+      if (Math.abs(dy) >= DY || Math.abs(dx) >= ZB) continue;
+      const push = ZB - Math.abs(dx), s = dx === 0 ? -(z.face || 1) : Math.sign(dx);
+      e.x += s * push * 0.8; z.x -= s * push * 0.2;                // mostly the enemy gives way
+    }
+  }
+
   // ---------- main step ----------
   update(dt, input) {
     if (this.hitstop > 0) { this.hitstop -= dt; return; }          // freeze for a beat on impact
@@ -127,6 +151,7 @@ export class Game {
       T.step = 0; return;
     }
     for (const e of this.enemies) e.update(dt, this);
+    this._separate(dt);
     this._zeeAttacks(); this._papers(); this._shots(dt);
     this.enemies = this.enemies.filter((e) => !e.remove);
     this.comboT -= dt; if (this.comboT <= 0) this.combo = 0;
@@ -156,7 +181,15 @@ export class Game {
       this.parts.push({ type, x, y, z, vx: Math.cos(a) * s, vz: dust ? Math.abs(Math.sin(a)) * s * 0.4 : Math.sin(a) * s * 0.8, t: 0, life: dust ? 0.5 + Math.random() * 0.3 : 0.22 + Math.random() * 0.12, color: colors[i % colors.length], g: dust ? 0 : 500, drag: dust ? 0.96 : 0.9 });
     }
   }
-  _text(x, y, z, text, color) { this.texts.push({ x: x + (Math.random() - 0.5) * 10, y, z, t: 0, text, color }); }
+  // floating numbers never pile up: a new one that would land on a fresh one is lifted above it
+  _text(x, y, z, text, color) {
+    let zz = z;
+    for (let tries = 0; tries < 6; tries++) {
+      const clash = this.texts.some((t) => t.t < 0.4 && Math.abs(t.x - x) < 18 && Math.abs((t.y - t.z - t.t * 34) - (y - zz)) < 11);
+      if (!clash) break; zz += 12;
+    }
+    this.texts.push({ x, y, z: zz, t: 0, text, color });
+  }
 
   // ---------- drawing ----------
   draw(ctx, alpha) {
@@ -217,7 +250,7 @@ export class Game {
       const t = this.combo + ' HITS'; ctx.strokeText(t, 0, 0); ctx.fillStyle = this.combo >= 5 ? '#ffd24a' : '#fff'; ctx.fillText(t, 0, 0);
       ctx.restore();
     }
-    ctx.fillStyle = '#c9c4dd'; ctx.font = 'bold 8px ui-monospace, Consolas, monospace';
-    ctx.fillText('KO ' + this.kos, 12, 56);
+    ctx.font = 'bold 9px ui-monospace, Consolas, monospace'; ctx.textAlign = 'left'; ctx.lineWidth = 3; ctx.strokeStyle = '#10101a';
+    const ko = 'KO  ' + this.kos; ctx.strokeText(ko, 12, 54); ctx.fillStyle = '#ffd24a'; ctx.fillText(ko, 12, 54);
   }
 }

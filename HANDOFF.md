@@ -28,3 +28,5 @@ After any work, add a dated line under "Decisions and changes" and adjust "Next 
 - 2026-11-21 (AI+walk pass): enemies always close in (no retreat/keep-distance), one takes Zee's front while others go round her back (depth detour), attack instantly from behind, always face their walking direction (no backwards walking; evade = depth sidestep). Walk loops pruned of near-duplicate frames (tools/walk-drop-<id>.txt from visual review; order-walk also auto-prunes). Navy: normal idle + occasional bicep flex ('flex' anim).
 
 - 2026-11-21: no redesign (master redesign gave little gain). Added tools/lock-head.ps1 (one clean head pasted on every walk/idle frame, matched position) - run automatically by build-enemy after order-walk. Heavies HP 140.
+
+- 2026-11-21: polish pass - body separation + pushback, white-pop/light-red hit flash, decluttered damage numbers, new HUD, enemies walk in from screen edges, enemies step back off a beaten Zee.
