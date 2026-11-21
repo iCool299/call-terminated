@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611212001';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611212001';
-import { SOFT } from './zee.js?v=202611212001';
+import { CONFIG } from './config.js?v=202611212026';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611212026';
+import { SOFT } from './zee.js?v=202611212026';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -366,7 +366,7 @@ export class Enemy {
     } else drawAnim(ctx, ch, this.anim, this.frame, x, y, this.face, fade, this.flash * 6);
     // health bar with the HP number beside it, for a moment after being hit
     if (this.barT > 0 && this.state !== 'dead') {
-      const bw = this.heavy ? 44 : 34, bx = Math.round(x - bw / 2 - 6), by = Math.round(y - ch.manifest.gameHeight - 12);
+      const bw = this.heavy ? 44 : 34, bx = Math.round(x - bw / 2 - 6), by = Math.round(y - (lying ? 34 : ch.manifest.gameHeight + 12));   // lying down: bar sits just above the body
       ctx.globalAlpha = Math.min(1, this.barT * 2);
       ctx.fillStyle = '#10101a'; ctx.fillRect(bx - 1, by - 1, bw + 2, 6);
       ctx.fillStyle = '#3a2430'; ctx.fillRect(bx, by, bw, 4);

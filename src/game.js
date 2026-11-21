@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611212001';
-import { Enemy } from './enemy.js?v=202611212001';
-import { SOFT } from './zee.js?v=202611212001';
-import { sfx } from './sfx.js?v=202611212001';
+import { CONFIG } from './config.js?v=202611212026';
+import { Enemy } from './enemy.js?v=202611212026';
+import { SOFT } from './zee.js?v=202611212026';
+import { sfx } from './sfx.js?v=202611212026';
 
 const E = CONFIG.enemy;
 
@@ -113,7 +113,7 @@ export class Game {
   // Bodies are solid: enemies never stand inside each other, and never inside Zee (she gets shoved a little too).
   _separate(dt) {
     const z = this.zee, solid = (e) => !['dead', 'down', 'spawn', 'hold', 'throw'].includes(e.state) && !e.holdingZee && !e.entering;
-    const B = 30, ZB = 28, DY = 14;
+    const B = 34, ZB = 36, DY = 14;               // ZB just under the enemies' punching distance (attackRange 46 * 0.8)
     for (let i = 0; i < this.enemies.length; i++) {
       const a = this.enemies[i]; if (!solid(a)) continue;
       for (let j = i + 1; j < this.enemies.length; j++) {

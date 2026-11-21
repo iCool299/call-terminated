@@ -1,6 +1,6 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js?v=202611212001';
+import { CONFIG } from './config.js?v=202611212026';
 
 // Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
 export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -111,7 +111,7 @@ export function drawAnim(ctx, character, anim, frame, x, y, face, alpha = 1, tin
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   if (alpha !== 1) ctx.globalAlpha = alpha;
   // hit flash: a quick white pop for the first instant, then a light red that fades (never a solid red silhouette)
-  const pop = tint > 0.9, red = tint > 0.01 ? tinted(character, anim, frame, pop) : null, ta = pop ? 0.85 : Math.min(1, tint) * 0.5;
+  const pop = tint > 0.9, red = tint > 0.01 ? tinted(character, anim, frame, pop) : null, ta = pop ? 0.6 :Math.min(1, tint) * 0.5;
   if (face < 0) {
     ctx.save();
     ctx.translate(x, y); ctx.scale(-1, 1);
