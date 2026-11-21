@@ -1,8 +1,8 @@
 // Enemy: walks up to Zee, punches / kicks, throws call-centre headsets, and (navy + sporty) grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611202226';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611202226';
-import { SOFT } from './zee.js?v=202611202226';
+import { CONFIG } from './config.js?v=202611211353';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211353';
+import { SOFT } from './zee.js?v=202611211353';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -11,9 +11,11 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 export const CODENAMES = { navy: 'TITAN', polo: 'NOTEPAD', plum: 'AUDIT', cream: 'HOODIE', fighter: 'RINGER', gangly: 'STATIC', sporty: 'ANVIL', curvy: 'SASS' };
 export const ENEMY_IDS = Object.keys(CODENAMES);
 
-// where Zee hangs while she is held, per frame of the grab / throw animations (px in front of the enemy, px off the ground)
-const GRAB_DX = [20, 24, 26, 24, 18, 12, 8, 6], GRAB_Z = [20, 30, 45, 60, 80, 95, 105, 108];
-const THROW_DX = [6, 2, -4, -10, -12, -6, 14, 18, 18, 18, 18, 18], THROW_Z = [108, 108, 104, 98, 92, 86, 78, 70, 60, 50, 40, 30];
+// The grabbers' animation sheet is drawn WITH Zee in it (so the two are always perfectly in sync). These numbers line the real Zee up
+// with it: CLAMP_DX = how far in front of the grabber Zee stands in the clamp frame; RELEASE = where she leaves his hands (px in front
+// of his feet, px above the ground) when the throw releases.
+const CLAMP_DX = { navy: 52, sporty: 48 };
+const RELEASE = { navy: { dx: 92, z: 78 }, sporty: { dx: 58, z: 46 } };
 
 export class Enemy {
   constructor(id, character, x, y) {
@@ -25,6 +27,7 @@ export class Enemy {
     this.speed = E.walkSpeed * rnd(0.9, 1.15);
     this.prefersRange = !this.canGrab && Math.random() < 0.5;     // some enemies keep their distance and throw headsets
     this.flash = 0; this.barT = 0; this.spawnT = 0.5; this.cool = rnd(0.8, 1.4);
+    this.mx = 0; this.my = 0; this.decideT = 0; this.still = 0; this.faceT = 0;
     this.hitId = -1; this.holdingZee = false; this.struggle = 0; this.deadT = 0; this.remove = false;
     this.state = 'spawn'; this.attackName = 'punch';
     this._play('idle');
@@ -36,12 +39,6 @@ export class Enemy {
   snapshot() { this.px = this.x; this.py = this.y; }
   canBeHit() { return !['spawn', 'dead', 'down'].includes(this.state) && !this.holdingZee; }
 
-  // where she is held right now
-  holdPoint() {
-    const f = Math.min(this.frame, 11);
-    if (this.state === 'grab') return { x: this.x + this.face * GRAB_DX[Math.min(f, 7)], z: GRAB_Z[Math.min(f, 7)] };
-    return { x: this.x + this.face * THROW_DX[f], z: THROW_Z[f] };
-  }
   breakFree() { this.holdingZee = false; this.state = 'hurt'; this._play('hurt'); this.vx = -this.face * 40; }
 
   // returns false if ignored, 'kill' if it killed, true otherwise
@@ -55,7 +52,7 @@ export class Enemy {
   }
 
   update(dt, g) {
-    this.t += dt;
+    if (this.state !== 'whiff') this.t += dt * (this.animName === 'walk' ? 1.5 : 1);       // the walk loop is one step (12 frames): played at the speed that matches how fast they walk, so feet don't slide
     this.flash = Math.max(0, this.flash - dt);
     this.barT = Math.max(0, this.barT - dt);
     switch (this.state) {
@@ -64,6 +61,8 @@ export class Enemy {
       case 'attack': this._attack(dt, g); break;
       case 'ranged': this._ranged(dt, g); break;
       case 'grab': this._grab(dt, g); break;
+      case 'whiff': this.whiffT -= dt; if (this.whiffT <= 0) this._back(1.0); break;
+      case 'hold': this._hold(dt, g); break;
       case 'throw': this._throw(dt, g); break;
       case 'hurt': this.x += this.vx * dt; this.vx *= Math.pow(0.02, dt); if (this.done) this._back(0.35); break;
       case 'down': this._down(dt); break;
@@ -83,23 +82,36 @@ export class Enemy {
     const z = g.zee, dx = z.x - this.x, dy = z.y - this.y, adx = Math.abs(dx), ady = Math.abs(dy);
     this.cool -= dt;
     const idleOnly = z.state === 'defeat';
-    if (adx > 4 && !idleOnly) this.face = dx > 0 ? 1 : -1;
-    let mx = 0, my = 0;
-    if (!idleOnly) {
-      if (this.prefersRange && adx < E.attackRange + 60) { mx = 0; }                                  // she is on top of us: fight
-      if (this.prefersRange && adx > E.attackRange + 60) {
-        if (adx < E.keepDistance - 40) mx = -Math.sign(dx) * 0.8;                                     // back off
-        else if (adx > E.keepDistance + 60) mx = Math.sign(dx);                                       // come closer
-        if (ady > 10) my = Math.sign(dy) * 0.7;
-      } else {
-        if (ady > E.engageY) my = Math.sign(dy) * 0.75;
-        if (adx > E.attackRange - 6) mx = Math.sign(dx); else if (adx < E.attackRange - 26) mx = -Math.sign(dx) * 0.5;
-      }
+    if (!idleOnly && adx > 8) {                    // turn only after she has been on the other side for a moment (no flip-flopping)
+      const want = dx > 0 ? 1 : -1;
+      if (want !== this.face) { this.faceT += dt; if (this.faceT > 0.12) { this.face = want; this.faceT = 0; } } else this.faceT = 0;
     }
-    if (mx || my) {
-      this.x += mx * this.speed * dt; this.y += my * this.speed * CONFIG.zee.depthSpeedFactor * dt;
+    // Decide where to move only a few times a second (and keep going meanwhile): re-deciding every frame made enemies flick
+    // between walk and idle near the edge of their spacing, restarting the animation each time.
+    this.decideT -= dt;
+    if (this.decideT <= 0) {
+      this.decideT = 0.2;
+      let mx = 0, my = 0;
+      if (!idleOnly) {
+        if (this.prefersRange && adx > E.attackRange + 60) {
+          if (adx < E.keepDistance - 40) mx = -Math.sign(dx) * 0.8;                                   // back off
+          else if (adx > E.keepDistance + 60) mx = Math.sign(dx);                                     // come closer
+          if (ady > 10) my = Math.sign(dy) * 0.7;
+        } else {
+          if (ady > E.engageY + 3) my = Math.sign(dy) * 0.75;
+          if (adx > E.attackRange) mx = Math.sign(dx); else if (adx < 12) mx = -Math.sign(dx) * 0.5;       // only step back if literally on top of her
+        }
+      }
+      this.mx = mx; this.my = my;
+    }
+    if (this.mx || this.my) {
+      this.x += this.mx * this.speed * dt; this.y += this.my * this.speed * CONFIG.zee.depthSpeedFactor * dt;
+      this.still = 0;
       if (this.state !== 'walk') { this.state = 'walk'; this._play('walk'); }
-    } else if (this.state === 'walk') { this.state = 'idle'; this._play('idle'); }
+    } else {
+      this.still += dt;
+      if (this.state === 'walk' && this.still > 0.15) { this.state = 'idle'; this._play('idle'); }
+    }
     if (idleOnly || this.cool > 0) return;
     // pick an attack
     if (adx < E.attackRange + 8 && ady < E.engageY + 5) {
@@ -113,7 +125,7 @@ export class Enemy {
 
   _attack(dt, g) {
     const f = this.frame, a = this.anim, z = g.zee;
-    if (f >= 1 && f <= Math.max(...a.active)) this.x += this.face * 55 * dt;                           // step into the swing
+    if (f >= 1 && f <= Math.max(...a.active) && Math.abs(z.x - this.x) > 30) this.x += this.face * 40 * dt;    // step into the swing (never through her)
     if (!this.hitDone && a.active.includes(f)) {
       const dx = (z.x - this.x) * this.face;
       if (dx > -10 && dx < E.attackRange + 18 && Math.abs(z.y - this.y) < 16 && z.z < 40) {
@@ -129,24 +141,37 @@ export class Enemy {
     if (this.done) this._back(rnd(1.4, 2.4));
   }
 
+  // coil -> lunge -> CLAMP (the catch) -> hoist -> overhead. Zee is drawn inside this animation from the clamp frame on.
   _grab(dt, g) {
-    const f = this.frame, z = g.zee;
-    if (!this.holdingZee && this.anim.active.includes(f)) {
+    const f = this.frame, z = g.zee, clamp = this.anim.active[0];
+    if (!this.holdingZee) {
+      if (f < clamp) { this.x += this.face * 90 * dt; return; }                  // lunge in
       const dx = (z.x - this.x) * this.face;
-      if (dx > -10 && dx < E.grabRange && Math.abs(z.y - this.y) < 15 && z.canBeGrabbed()) {
-        this.holdingZee = true; z.getGrabbed(this); g.sfx.grab(); g.shake = Math.max(g.shake, 2);
+      if (dx > -14 && dx < E.grabRange + 14 && Math.abs(z.y - this.y) < 16 && z.canBeGrabbed()) {
+        this.holdingZee = true; this.struggle = 0; z.getGrabbed(this);
+        this.x = z.x - this.face * (CLAMP_DX[this.id] || 50); this.y = z.y;          // line up with the clamp pose (a few px at most)
+        g.sfx.grab(); g.shake = Math.max(g.shake, 2.5); g.hitstop = Math.max(g.hitstop, 0.05);
+      } else {                                                                      // missed: she dodged or jumped away
+        this.state = 'whiff'; this.whiffT = 0.4; this.t = this.anim.starts[clamp] - 0.001;
       }
+      return;
     }
-    if (!this.holdingZee && f <= Math.max(...this.anim.active)) this.x += this.face * 70 * dt;         // lunge
-    if (this.done) {
-      if (this.holdingZee) { this.state = 'throw'; this.thrown = false; this._play('throw'); }
-      else this._back(rnd(0.9, 1.4));
-    }
+    if (this.done) { this.state = 'hold'; this.holdT = 0; this._play('hold'); }
   }
 
+  // overhead hold (looping): she struggles; mash buttons to break free (see Zee._held), otherwise he throws
+  _hold(dt, g) {
+    this.holdT += dt;
+    if (!this.holdingZee) { this._back(1.0); return; }
+    if (this.holdT >= E.holdTime) { this.state = 'throw'; this.thrown = false; this._play('throw'); }
+  }
+
+  // wind-up (Zee behind his head) -> heave -> RELEASE: Zee leaves his hands and flies
   _throw(dt, g) {
     if (!this.thrown && this.holdingZee && this.frame >= this.anim.release[0]) {
-      this.thrown = true; this.holdingZee = false; g.zee.throwAway(this.face); g.onThrow();
+      const R = RELEASE[this.id] || { dx: 60, z: 60 };
+      this.thrown = true; this.holdingZee = false;
+      g.zee.throwAway(this.face, this.x + this.face * R.dx, R.z); g.onThrow();
     }
     if (this.done) this._back(rnd(1.2, 1.8));
   }

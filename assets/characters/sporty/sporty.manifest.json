@@ -3,12 +3,12 @@
     "grab":  true,
     "gameHeight":  118,
     "cell":  {
-                 "w":  368,
-                 "h":  288
+                 "w":  464,
+                 "h":  352
              },
     "anchor":  {
-                   "x":  184,
-                   "y":  264
+                   "x":  232,
+                   "y":  328
                },
     "drawScale":  0.5,
     "facing":  "right",
@@ -33,8 +33,13 @@
                              "frames":  16,
                              "cols":  8
                          },
-                   "e":  {
-                             "file":  "sporty_e.png",
+                   "g":  {
+                             "file":  "sporty_g.png",
+                             "frames":  16,
+                             "cols":  8
+                         },
+                   "w":  {
+                             "file":  "sporty_w.png",
                              "frames":  12,
                              "cols":  8
                          }
@@ -48,10 +53,10 @@
                                     "loop":  true
                                 },
                        "walk":  {
-                                    "strip":  "a",
-                                    "from":  8,
-                                    "to":  15,
-                                    "fps":  12,
+                                    "strip":  "w",
+                                    "from":  0,
+                                    "to":  11,
+                                    "fps":  14,
                                     "loop":  true
                                 },
                        "punch":  {
@@ -105,25 +110,31 @@
                                       "loop":  false
                                   },
                        "grab":  {
-                                    "strip":  "d",
-                                    "from":  8,
-                                    "to":  15,
-                                    "fps":  16,
+                                    "strip":  "g",
+                                    "from":  1,
+                                    "to":  6,
+                                    "fps":  12,
                                     "loop":  false,
                                     "active":  [
-                                                   2,
-                                                   3
+                                                   2
                                                ]
                                 },
+                       "hold":  {
+                                    "strip":  "g",
+                                    "from":  6,
+                                    "to":  8,
+                                    "fps":  9,
+                                    "loop":  true,
+                                    "pingpong":  true
+                                },
                        "throw":  {
-                                     "strip":  "e",
-                                     "from":  0,
-                                     "to":  11,
-                                     "fps":  16,
+                                     "strip":  "g",
+                                     "from":  9,
+                                     "to":  15,
+                                     "fps":  11,
                                      "loop":  false,
                                      "release":  [
-                                                     6,
-                                                     7
+                                                     3
                                                  ]
                                  }
                    }

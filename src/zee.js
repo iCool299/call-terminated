@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611202226';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611202226';
+import { CONFIG } from './config.js?v=202611211353';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211353';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -64,13 +64,16 @@ export class Zee {
   _held(dt, input, actions) {
     const h = this.holder;
     if (!h || !h.holdingZee) { this.holder = null; return this._fall(0, false); }
-    const p = h.holdPoint();
-    this.x = p.x; this.y = h.y + 1; this.z = p.z; this.face = -h.face;
+    this.x = h.x + h.face * 36; this.y = h.y + 1; this.z = 0; this.face = -h.face;     // she is drawn inside the grabber's own animation
     for (const a of actions) if (a === 'light' || a === 'jump' || a === 'dodge' || a === 'special') this.struggle++;
-    if (this.struggle >= C.escapeMash) { h.breakFree(); this.events.push({ type: 'escape' }); this._fall(-h.face * 120, false); }
+    if (this.struggle >= C.escapeMash) { h.breakFree(); this.events.push({ type: 'escape' }); this.x = h.x + h.face * 66; this.z = 45; this.px = this.x; this.pz = 45; this._fall(-h.face * 120, false); }
   }
   // flung by the holder; lands as a slam that costs a share of her HP
-  throwAway(dir) { this.holder = null; this._fall(dir * CONFIG.enemy.throwSpeed, true); this.vz = CONFIG.enemy.throwLift; }
+  throwAway(dir, x, z) {
+    this.holder = null; this._fall(dir * CONFIG.enemy.throwSpeed, true);
+    this.x = x; this.z = z; this.vz = CONFIG.enemy.throwLift; this.face = dir;
+    this.px = this.x; this.pz = this.z;                    // no interpolation across the jump from "inside the grab" to "in the air"
+  }
   _fall(vx, slam) {
     this.vx = vx; this.vz = 80; this.slam = slam; this.holder = null;
     this._enter('thrown', 'thrown');
@@ -336,6 +339,7 @@ export class Zee {
 
   draw(ctx, alpha = 1) {
     if (this.px === undefined) this.snapshot();
+    if (this.state === 'held') { this._drawPapers(ctx); return; }          // the grabber's animation already draws her
     const x = this.px + (this.x - this.px) * alpha;
     const y = this.py + (this.y - this.py) * alpha;
     const lift = Math.max(0, this.pz + (this.z - this.pz) * alpha);

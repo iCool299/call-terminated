@@ -1,6 +1,6 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js?v=202611202226';
+import { CONFIG } from './config.js?v=202611211353';
 
 // Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
 export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -35,7 +35,7 @@ export async function loadCharacter(baseUrl, id = 'zee') {
     }
     anims[name] = {
       name, img: images[a.strip], cols: manifest.strips[a.strip].cols || 99999, from: a.from, frames, fps: a.fps, loop: !!a.loop,
-      loopFrom: a.loopFrom || 0, active, iframes: a.iframes || [], release: a.release || [],
+      loopFrom: a.loopFrom || 0, active, iframes: a.iframes || [], release: a.release || [], pingpong: !!a.pingpong,
       starts, duration: starts[frames],
     };
   }
@@ -84,6 +84,10 @@ export function silhouette(character, anim, frame) {
 // Which frame (0-based inside the animation) is showing at time t.
 export function frameAt(anim, t) {
   const { starts, frames } = anim;
+  if (anim.pingpong && frames > 2) {                       // 0 1 2 1 0 1 2 ... : always seamless, no jump back to the start
+    const p = Math.floor(t * anim.fps) % (2 * frames - 2);
+    return p < frames ? p : 2 * frames - 2 - p;
+  }
   if (t >= anim.duration) {
     if (!anim.loop) return frames - 1;
     const loopStart = starts[anim.loopFrom];

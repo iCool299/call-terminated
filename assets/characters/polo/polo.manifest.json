@@ -32,6 +32,11 @@
                              "file":  "polo_d.png",
                              "frames":  16,
                              "cols":  8
+                         },
+                   "w":  {
+                             "file":  "polo_w.png",
+                             "frames":  12,
+                             "cols":  8
                          }
                },
     "animations":  {
@@ -43,10 +48,10 @@
                                     "loop":  true
                                 },
                        "walk":  {
-                                    "strip":  "a",
-                                    "from":  8,
-                                    "to":  15,
-                                    "fps":  12,
+                                    "strip":  "w",
+                                    "from":  0,
+                                    "to":  11,
+                                    "fps":  14,
                                     "loop":  true
                                 },
                        "punch":  {

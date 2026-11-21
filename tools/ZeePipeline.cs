@@ -18,6 +18,8 @@ namespace Zee2
         public double StandH;      // source px height of a standing Zee in this sheet (scale = TargetStand / StandH)
         public double Scale;       // explicit dest px per source px (overrides StandH when > 0)
         public int DropFrames;     // number of trailing frames to ignore (unused)
+        public bool FeetAnchor;    // anchor each frame on its lowest 7% (the feet) instead of the lower body: for frames holding a second, lifted character
+        public double[] Anchors;   // optional per-frame source x anchors (NaN = automatic)
     }
 
     public class SheetOut
@@ -167,6 +169,20 @@ namespace Zee2
                     double hh = maxY[f] - minY[f] + 1;
                     if (y >= minY[f] + 0.55 * hh) { legCx[f] += x; legN[f]++; }
                 }
+            if (c.FeetAnchor)
+            {
+                double[] fx = new double[n], fn = new double[n];
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++)
+                    {
+                        int f = frameOf[y * W + x]; if (f < 0) continue;
+                        double hh = maxY[f] - minY[f] + 1;
+                        if (y >= maxY[f] - 0.07 * hh) { fx[f] += x; fn[f]++; }
+                    }
+                for (int k = 0; k < n; k++) if (fn[k] > 0) { legCx[k] = fx[k] / fn[k] * Math.Max(1, legN[k]); }   // (divided by legN below)
+            }
+            if (c.Anchors != null)
+                for (int k = 0; k < n && k < c.Anchors.Length; k++) if (!double.IsNaN(c.Anchors[k])) legCx[k] = c.Anchors[k] * Math.Max(1, legN[k]);
             int[] bottoms = new int[n]; int[] heights = new int[n];
             for (int k = 0; k < n; k++) { legCx[k] /= Math.Max(1, legN[k]); bottoms[k] = maxY[k] + 1; heights[k] = maxY[k] - minY[k] + 1; }
             // baseline per grid row: median of the lowest 60% of that row's frame bottoms

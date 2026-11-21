@@ -44,6 +44,7 @@ export const CONFIG = {
     grabRange: 54, grabChance: 0.35,   // grabbers (navy, sporty) try to grab Zee this often
     throwDamagePct: 0.2,               // being thrown costs this share of Zee's max HP
     throwSpeed: 300, throwLift: 520,
+    holdTime: 1.0,                     // seconds he holds her overhead (mash buttons to break free) before throwing
     cooldown: [0.9, 1.8],              // seconds between attacks
     keepDistance: 190,                 // headset throwers like to stay about this far away
     corpseTime: 1.8,
