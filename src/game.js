@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611212044';
-import { Enemy } from './enemy.js?v=202611212044';
-import { SOFT } from './zee.js?v=202611212044';
-import { sfx } from './sfx.js?v=202611212044';
+import { CONFIG } from './config.js?v=202611212049';
+import { Enemy } from './enemy.js?v=202611212049';
+import { SOFT } from './zee.js?v=202611212049';
+import { sfx } from './sfx.js?v=202611212049';
 
 const E = CONFIG.enemy;
 
@@ -303,7 +303,5 @@ export class Game {
       const t = this.combo + ' HITS'; ctx.strokeText(t, 0, 0); ctx.fillStyle = this.combo >= 5 ? '#ffd24a' : '#fff'; ctx.fillText(t, 0, 0);
       ctx.restore();
     }
-    ctx.font = 'bold 9px ui-monospace, Consolas, monospace'; ctx.textAlign = 'left'; ctx.lineWidth = 3; ctx.strokeStyle = '#10101a';
-    const ko = 'KO  ' + this.kos; ctx.strokeText(ko, 12, 54); ctx.fillStyle = '#ffd24a'; ctx.fillText(ko, 12, 54);
   }
 }
