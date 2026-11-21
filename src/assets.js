@@ -1,6 +1,6 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js?v=202611220043';
+import { CONFIG } from './config.js?v=202611220053';
 
 // Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
 export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -112,6 +112,19 @@ export const LOOK = {
   wash: 'rgba(60,70,130,0.16)',                  // scene colour wash (per level later)
   grade: { zee: '', default: 'saturate(0.9) contrast(1.04)' },   // enemies brought to Zee's saturation
 };
+// Per-room lighting: eases the lit look toward a room's light settings (rim / wash colours are [r,g,b] so they can blend).
+const LIGHT = { rim: [215, 232, 255], wash: [60, 70, 130], washAlpha: 0.16, ready: false };
+export function setLight(light, dt) {
+  if (!light) return;
+  const k = LIGHT.ready ? 1 - Math.exp(-dt * 3) : 1; LIGHT.ready = true;                 // the first call snaps, then it eases over ~0.5 s
+  const mix = (a, b) => a + (b - a) * k;
+  for (const key of ['lightX', 'lightY', 'rimAlpha', 'rimPx', 'feet']) if (light[key] !== undefined) LOOK[key] = mix(LOOK[key], light[key]);
+  if (light.rim) LIGHT.rim = LIGHT.rim.map((v, i) => mix(v, light.rim[i]));
+  if (light.wash) LIGHT.wash = LIGHT.wash.map((v, i) => mix(v, light.wash[i]));
+  if (light.washAlpha !== undefined) LIGHT.washAlpha = mix(LIGHT.washAlpha, light.washAlpha);
+  LOOK.rim = 'rgb(' + LIGHT.rim.map(Math.round).join(',') + ')';
+  LOOK.wash = 'rgba(' + LIGHT.wash.map(Math.round).join(',') + ',' + LIGHT.washAlpha.toFixed(3) + ')';
+}
 let S1, S2;
 function scratch(w, h) {
   if (!S1 || S1.width < w || S1.height < h) {

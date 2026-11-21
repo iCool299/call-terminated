@@ -1,14 +1,14 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611220043';
-import { loadCharacter, VERSION, LOOK } from './assets.js?v=202611220043';
-import { Input } from './input.js?v=202611220043';
-import { Zee } from './zee.js?v=202611220043';
-import { Game } from './game.js?v=202611220043';
-import { ENEMY_IDS } from './enemy.js?v=202611220043';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611220043';
-import { Level, qualityDepartment } from './level.js?v=202611220043';
-import { Camera } from './camera.js?v=202611220043';
-import { unlock } from './sfx.js?v=202611220043';
+import { CONFIG } from './config.js?v=202611220053';
+import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220053';
+import { Input } from './input.js?v=202611220053';
+import { Zee } from './zee.js?v=202611220053';
+import { Game } from './game.js?v=202611220053';
+import { ENEMY_IDS } from './enemy.js?v=202611220053';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611220053';
+import { Level, qualityDepartment } from './level.js?v=202611220053';
+import { Camera } from './camera.js?v=202611220053';
+import { unlock } from './sfx.js?v=202611220053';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -197,6 +197,7 @@ function frame(now) {
   const a = paused ? 1 : acc / STEP;
   const zx = zee.px !== undefined ? zee.px + (zee.x - zee.px) * a : zee.x;      // Zee's smoothed position this frame
   camera.update(zx, zee.face, dt, level.width, ppu);
+  setLight(level.roomAt(zx).light, dt);                                          // each room has its own light for the characters
   const sx = game.shake > 0 ? (Math.random() - 0.5) * 2 * game.shake : 0, sy = game.shake > 0 ? (Math.random() - 0.5) * 2 * game.shake : 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -223,6 +224,7 @@ function frame(now) {
     buildViewer();
     setupSpawner();
     setupModes();
+    await level.ready;                                  // the room art has loaded
     $('loading').remove();
     requestAnimationFrame((t) => { last = t; frame(t); });
     window.__zee = zee; window.__input = input; window.__game = game; window.__level = level; window.__camera = camera;     // handy for debugging in the console

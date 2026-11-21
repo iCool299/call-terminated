@@ -12,11 +12,16 @@
 // Each track has a parallax speed (1 = scrolls with the world, < 1 = further away and slower, > 1 = closer and faster).
 //
 // ROOMS: { id, name, width, doorRight: { locked }, art: { far, arch, props, fore } }
-//   art.<track> is either a function (ctx, w, h, room) that draws the room's slice of that track in room-local units
-//   (temporary geometry below), or an image URL string (the final art: 1 image pixel = 1 world unit, so the Quality
-//   Department's arch/props art is 1800 x 507 px; far is 1170 px wide and fore is 1908 px wide at the current speeds).
+//   art.<track> is either a function (ctx, w, h, room) that draws the room's slice of that track in room-local units (the
+//   temporary geometry below), or FINAL ART: a URL string (drawn at 1 image pixel = 1 world unit) or an object
+//   { src, scale, x, y, smooth }: scale = world units per image pixel, x / y = where its top-left corner goes in the
+//   room (world units, y may be negative to crop the top), smooth = true for painted art, false for crisp pixel art.
+//   Image art is kept at its own pixel density (never resampled while it is baked into the layer).
+//   light: { rim, rimAlpha, rimPx, lightX, lightY, wash, washAlpha, feet } = how Zee and the enemies are lit in this room
+//   (rim / wash are [r,g,b]); the game eases from one room's light to the next (see setLight in assets.js).
 //   doorRight is the door to the NEXT room: while it is locked the player cannot pass it; no door (or unlocked) = open.
-import { CONFIG } from './config.js?v=202611220043';
+import { CONFIG } from './config.js?v=202611220053';
+import { VERSION } from './assets.js?v=202611220053';
 
 const C = CONFIG.camera, F = CONFIG.floor;
 export const LAYER_H = 507;                       // layer height in pixels (the view shows 506.25)
@@ -30,11 +35,13 @@ const TRACKS = [
 
 export class Level {
   constructor(rooms = []) {
-    this.rooms = []; this.width = 0;
-    this.tracks = TRACKS.map((t) => ({ ...t, canvas: null }));
+    this.rooms = []; this.width = 0; this._pending = [];
+    this.tracks = TRACKS.map((t) => ({ ...t, canvas: null, res: 1, smooth: false }));
     for (const r of rooms) this.addRoom(r, false);
     this.build();
   }
+
+  get ready() { return Promise.all(this._pending); }          // resolves when every image layer has loaded
 
   // adds a room at the end of the level (seamless: the world just continues, layers are rebuilt)
   addRoom(room, rebuild = true) {
@@ -54,25 +61,42 @@ export class Level {
 
   roomAt(x) { return this.rooms.find((r) => x >= r.x0 && x < r.x0 + r.width) || this.rooms[this.rooms.length - 1]; }
 
-  // renders every track into its own canvas (1 px per world unit). A track at speed s is  viewW + (levelW - viewW) * s  wide;
-  // each room paints the slice of it that its part of the level scrolls past.
+  // renders every track into its own canvas. A track at speed s is  viewW + (levelW - viewW) * s  wide; each room paints the
+  // slice of it that its part of the level scrolls past. Tracks nobody paints are skipped. A track's canvas uses the densest
+  // pixel density of its image art (res = pixels per world unit), so the art is stored exactly as delivered.
   build() {
+    this._pending = [];
     for (const t of this.tracks) {
+      const arts = this.rooms.map((r) => r.art && r.art[t.id]).filter(Boolean);
+      if (!arts.length) { t.canvas = null; continue; }
+      t.res = Math.max(1, ...arts.map((a) => (a && a.src && a.scale ? 1 / a.scale : 1)));
+      t.smooth = arts.some((a) => a && a.smooth);
       const wt = Math.max(C.viewW, Math.round(C.viewW + (this.width - C.viewW) * t.speed));
-      const cv = document.createElement('canvas'); cv.width = wt; cv.height = LAYER_H;
-      const c = cv.getContext('2d');
-      const bounds = this.rooms.map((r) => Math.round(r.x0 * t.speed)); bounds.push(wt);
-      this.rooms.forEach((room, i) => this._paint(c, t.id, room, bounds[i], bounds[i + 1] - bounds[i]));
+      const cv = document.createElement('canvas'); cv.width = Math.round(wt * t.res); cv.height = Math.round(LAYER_H * t.res);
+      const c = cv.getContext('2d'); c.scale(t.res, t.res);             // from here on everything is in world units
+      const edges = this.rooms.map((r) => Math.round(r.x0 * t.speed)); edges.push(wt);
+      this.rooms.forEach((room, i) => this._paint(c, t, room, edges[i], edges[i + 1] - edges[i]));
       t.canvas = cv;
     }
   }
-  _paint(c, id, room, u0, w) {
-    const art = room.art && room.art[id];
+  _paint(c, t, room, u0, w) {
+    const art = room.art && room.art[t.id];
     if (!art || w <= 0) return;
-    if (typeof art === 'string') {                  // final art: an image, drawn when it has loaded
-      const img = new Image();
-      img.onload = () => { c.clearRect(u0, 0, w, LAYER_H); c.drawImage(img, u0, 0, w, LAYER_H); };
-      img.src = art; return;
+    if (typeof art !== 'function') {                  // final art: an image URL, or { src, scale, x, y, smooth }
+      const spec = typeof art === 'string' ? { src: art, scale: 1 } : art;
+      this._pending.push(new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          c.save(); c.beginPath(); c.rect(u0, 0, w, LAYER_H); c.clip();
+          c.imageSmoothingEnabled = !!spec.smooth; c.imageSmoothingQuality = 'high';
+          const k = spec.scale || 1;
+          c.drawImage(img, u0 + (spec.x || 0), spec.y || 0, img.width * k, img.height * k);
+          c.restore(); resolve();
+        };
+        img.onerror = () => { console.error('level art failed to load: ' + spec.src); resolve(); };
+        img.src = spec.src.startsWith('data:') ? spec.src : spec.src + '?v=' + VERSION;
+      }));
+      return;
     }
     c.save(); c.translate(u0, 0); c.beginPath(); c.rect(0, 0, w, LAYER_H); c.clip(); art(c, w, LAYER_H, room); c.restore();
   }
@@ -81,12 +105,13 @@ export class Level {
   drawBack(ctx, camX) { this._draw(ctx, camX, false); }
   drawFront(ctx, camX) { this._draw(ctx, camX, true); }
   _draw(ctx, camX, front) {
-    ctx.imageSmoothingEnabled = false;              // nearest-neighbour: crisp pixels, no blur between layer pixels
     for (const t of this.tracks) {
       if (t.front !== front || !t.canvas) continue;
-      const sx = Math.max(0, Math.min(t.canvas.width - C.viewW, t.speed * camX));
-      ctx.drawImage(t.canvas, sx, 0, C.viewW, C.viewH, camX, 0, C.viewW, C.viewH);
+      ctx.imageSmoothingEnabled = t.smooth; ctx.imageSmoothingQuality = 'high';    // painted art is smoothed; pixel art stays crisp (nearest)
+      const sx = Math.max(0, Math.min(t.canvas.width / t.res - C.viewW, t.speed * camX));
+      ctx.drawImage(t.canvas, sx * t.res, 0, C.viewW * t.res, C.viewH * t.res, camX, 0, C.viewW, C.viewH);
     }
+    ctx.imageSmoothingEnabled = false;
   }
 }
 
@@ -172,7 +197,23 @@ function foreArt(ctx, w, h) {                      // foreground: ceiling lamps 
   ctx.fillStyle = g; ctx.fillRect(0, F.bottom + 2, w, h - F.bottom - 2);
 }
 
-// Level 1, room 1
+// A temporary room (simple geometry in the right proportions) for tests, and for rooms that have no final art yet
+export function tempRoom(id, name, width) {
+  return { id, name, width, doorRight: { locked: true }, art: { far: farArt, arch: archArt, props: propsArt, fore: foreArt } };
+}
+
+// R01 Quality Department: final art, a single 2000 x 667 px image (assets/levels/r01_quality_department.webp).
+// It is placed at 0.9 world units per image pixel, so it is exactly 1800 units wide. y puts the image's bottom edge on the
+// bottom of the view (Y 506.25), which puts its floor / wall line (image y ~476) at about Y 334, the top of the feet band.
+// The image has the window view, furniture and the door painted in, so for now it is one layer (no parallax in the windows).
+const R01_SCALE = 0.9, R01_H = 667;
 export function qualityDepartment() {
-  return { id: 'quality', name: 'Quality Department', width: 1800, doorRight: { locked: true }, art: { far: farArt, arch: archArt, props: propsArt, fore: foreArt } };
+  return {
+    id: 'R01', name: 'Quality Department', width: 1800, doorRight: { locked: true },
+    art: { arch: { src: 'assets/levels/r01_quality_department.webp', scale: R01_SCALE, y: C.viewH - R01_H * R01_SCALE, smooth: true } },
+    // LIGHT (read from the art): a bright, cool white-blue room (floor ~ rgb 142,176,222, walls ~ 148,176,218). Sunlight comes through
+    // the tall windows on the LEFT (top-left, matching how the sprites are shaded), so the rim light is a soft warm white against a
+    // cool blue ambient. The floor is bright and glossy, so legs are shaded less than usual.
+    light: { rim: [255, 242, 208], rimAlpha: 0.6, rimPx: 4, lightX: -1, lightY: -0.5, wash: [96, 150, 235], washAlpha: 0.13, feet: 0.22 },
+  };
 }
