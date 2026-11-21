@@ -2,7 +2,7 @@
 # StandH = Zee's standing height in source pixels for that sheet (measured from guard/idle frames; the generator keeps one pixel scale per sheet).
 $sheets = @(
     (Cfg 'idle'        'idle_v2.png'        12 3 323),
-    (Cfg 'idle_makeup' 'idle_makeup_v2.png' 16 4 277),
+    (Cfg 'idle_makeup' 'idle_makeup_v3.png' 16 4 277),
     (Cfg 'walk'        'walk_v3.png'        12 3 323),
     (Cfg 'run'         'run_v3.png'         12 3 323),
     (Cfg 'jump'        'jump_v2.png'        12 3 323),
