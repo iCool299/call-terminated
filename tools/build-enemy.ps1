@@ -64,4 +64,5 @@ $manifest = [ordered]@{
     facing = 'right'; strips = $strips; animations = $anims
 }
 $manifest | ConvertTo-Json -Depth 6 | Out-File (Join-Path $out "$Id.manifest.json") -Encoding ascii
-Write-Host "built $Id : $($sheets.Count) strips, $($anims.Count) animations (cell ${cw}x${ch}) -> $out"
+if ($have -contains 'w') { & (Join-Path $PSScriptRoot 'order-walk.ps1') -Id $Id }            # smoothest walk loop (always run after a build)
+Write-Host "built $Id :$($sheets.Count) strips, $($anims.Count) animations (cell ${cw}x${ch}) -> $out"

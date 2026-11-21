@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611211353';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211353';
+import { CONFIG } from './config.js?v=202611211413';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211413';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -59,7 +59,7 @@ export class Zee {
   }
   getGrabbed(holder) {
     this.holder = holder; this.vx = 0; this.vz = 0; this.struggle = 0;
-    this._enter('held', 'grabbed');
+    this._enter('held', 'idle');
   }
   _held(dt, input, actions) {
     const h = this.holder;
@@ -86,10 +86,14 @@ export class Zee {
         const dmg = Math.round(C.maxHp * CONFIG.enemy.throwDamagePct);
         this.hp = Math.max(0, this.hp - dmg); this.flash = 0.3;
         this.events.push({ type: 'slam', dmg });
-        this._knockdown(Math.sign(this.vx) || this.face, this.hp <= 0);
-        this.vx = 0;
-        const st = this.anims.knockdown.starts; this.t = st[Math.min(6, st.length - 2)];   // she is already on her back
-      } else { this.invuln = 0.8; this._enter('idle'); }
+        // she lands belly-first and slides a little, face-down (never on her back)
+        const dir = Math.sign(this.vx) || this.face;
+        this.prone = true; this.finalDefeat = this.hp <= 0; this.vx = dir * 70; this.face = dir;
+        this._enter('down', 'prone_land');
+      } else {                                               // broke free: a soft landing, still face-down, no damage
+        this.prone = true; this.finalDefeat = false; this.vx = (Math.sign(this.vx) || this.face) * 40;
+        this._enter('down', 'prone_land');
+      }
     }
   }
 
@@ -173,6 +177,7 @@ export class Zee {
   // ---------- state transitions ----------
   _enter(state, anim) {
     this.state = state; this.phase = ''; this.queued = false; this.idleTime = 0;
+    if (state !== 'down' && state !== 'getup' && state !== 'defeat') this.prone = false;
     if (state === 'attack') this.attackId++;
     if (state === 'idle') this._play('idle');
     else if (anim) this._play(anim);
@@ -322,6 +327,14 @@ export class Zee {
 
   _down(dt) {
     this.x += this.vx * dt; this.vx *= Math.pow(0.05, dt);
+    if (this.prone) {                                        // lying face-down after being thrown
+      if (this.animName === 'prone_land' && this.done) this._play('prone_lie');
+      else if (this.animName === 'prone_lie' && this.t >= C.proneHold) {
+        if (this.finalDefeat) { this.state = 'defeat'; return; }          // stays lying face-down (the sandbox gets her back up shortly)
+        this.state = 'getup'; this._play('get_up_prone'); this.invuln = 1.4;
+      }
+      return;
+    }
     if (this.animName === 'knockdown' && this.done) {
       if (this.finalDefeat) { this._enter('defeat', 'defeat'); return; }
       if (this.t >= this.anim.duration + C.knockdownHold) { this.state = 'getup'; this._play('get_up'); this.invuln = 1.4; }
@@ -329,7 +342,8 @@ export class Zee {
   }
 
   _clamp(b) {
-    this.x = Math.max(b.minX, Math.min(b.maxX, this.x));
+    const m = (this.prone || this.state === 'thrown') ? 38 : 0;          // her lying body is long: keep it on screen
+    this.x = Math.max(b.minX + m, Math.min(b.maxX - m, this.x));
     this.y = Math.max(b.minY, Math.min(b.maxY, this.y));
   }
 

@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611211353';
-import { Enemy } from './enemy.js?v=202611211353';
-import { SOFT } from './zee.js?v=202611211353';
-import { sfx } from './sfx.js?v=202611211353';
+import { CONFIG } from './config.js?v=202611211413';
+import { Enemy } from './enemy.js?v=202611211413';
+import { SOFT } from './zee.js?v=202611211413';
+import { sfx } from './sfx.js?v=202611211413';
 
 const E = CONFIG.enemy;
 
@@ -15,6 +15,10 @@ export class Game {
   }
 
   snapshot() { this.zee.snapshot(); for (const e of this.enemies) e.snapshot(); }
+
+  // how many enemies are in the middle of attacking Zee right now (the rest circle and wait their turn)
+  attackerCount() { let n = 0; for (const e of this.enemies) if (e.attacking) n++; return n; }
+  get maxAttackers() { return this.enemies.length > 4 ? E.maxAttackers + 1 : E.maxAttackers; }
 
   spawn(id, character) {
     const z = this.zee, W = CONFIG.view.w;

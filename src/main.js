@@ -1,11 +1,11 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611211353';
-import { loadCharacter, VERSION } from './assets.js?v=202611211353';
-import { Input } from './input.js?v=202611211353';
-import { Zee } from './zee.js?v=202611211353';
-import { Game } from './game.js?v=202611211353';
-import { ENEMY_IDS } from './enemy.js?v=202611211353';
-import { unlock } from './sfx.js?v=202611211353';
+import { CONFIG } from './config.js?v=202611211413';
+import { loadCharacter, VERSION } from './assets.js?v=202611211413';
+import { Input } from './input.js?v=202611211413';
+import { Zee } from './zee.js?v=202611211413';
+import { Game } from './game.js?v=202611211413';
+import { ENEMY_IDS } from './enemy.js?v=202611211413';
+import { unlock } from './sfx.js?v=202611211413';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -115,6 +115,7 @@ function drawHud() {
   ctx.fillRect(x, y, Math.round(bw * pct), bh);
   ctx.fillStyle = '#fff'; ctx.font = 'bold 9px ui-monospace, Consolas, monospace';
   ctx.fillText('ZEE', x, y + bh + 11);
+  ctx.fillText(String(Math.ceil(zee.hp)), x + bw + 6, y + bh - 1);                 // HP number beside the bar
   // special meter (cooldown)
   const sp = 1 - zee.cd.special / CONFIG.zee.specialCooldown;
   ctx.fillStyle = '#10101a'; ctx.fillRect(x - 2, y + 22, 94, 8);

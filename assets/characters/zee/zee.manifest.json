@@ -97,11 +97,11 @@
                                     "frames":  8,
                                     "cols":  8
                                 },
-                   "grabbed":  {
-                                   "file":  "zee_grabbed.png",
-                                   "frames":  16,
-                                   "cols":  8
-                               }
+                   "prone":  {
+                                 "file":  "zee_prone.png",
+                                 "frames":  16,
+                                 "cols":  8
+                             }
                },
     "animations":  {
                        "idle":  {
@@ -292,19 +292,41 @@
                                         "fps":  14,
                                         "loop":  false
                                     },
-                       "grabbed":  {
-                                       "strip":  "grabbed",
-                                       "from":  1,
-                                       "to":  8,
-                                       "fps":  12,
-                                       "loop":  true
-                                   },
                        "thrown":  {
-                                      "strip":  "grabbed",
-                                      "from":  9,
-                                      "to":  15,
-                                      "fps":  14,
+                                      "strip":  "prone",
+                                      "from":  1,
+                                      "to":  5,
+                                      "fps":  12,
                                       "loop":  false
-                                  }
+                                  },
+                       "prone_land":  {
+                                          "strip":  "prone",
+                                          "from":  6,
+                                          "to":  7,
+                                          "fps":  14,
+                                          "loop":  false
+                                      },
+                       "prone_lie":  {
+                                         "strip":  "prone",
+                                         "from":  8,
+                                         "to":  9,
+                                         "fps":  2.5,
+                                         "loop":  true
+                                     },
+                       "get_up_prone":  {
+                                            "strip":  "prone",
+                                            "from":  10,
+                                            "to":  15,
+                                            "fps":  12,
+                                            "loop":  false,
+                                            "iframes":  [
+                                                            0,
+                                                            1,
+                                                            2,
+                                                            3,
+                                                            4,
+                                                            5
+                                                        ]
+                                        }
                    }
 }

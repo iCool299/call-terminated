@@ -1,15 +1,16 @@
-// Enemy: walks up to Zee, punches / kicks, throws call-centre headsets, and (navy + sporty) grabs and throws her.
+// Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
+// throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611211353';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211353';
-import { SOFT } from './zee.js?v=202611211353';
+import { CONFIG } from './config.js?v=202611211413';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211413';
+import { SOFT } from './zee.js?v=202611211413';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
+const sgn = (v) => (v < 0 ? -1 : 1);
 
-// code names (never real names)
-export const CODENAMES = { navy: 'TITAN', polo: 'NOTEPAD', plum: 'AUDIT', cream: 'HOODIE', fighter: 'RINGER', gangly: 'STATIC', sporty: 'ANVIL', curvy: 'SASS' };
-export const ENEMY_IDS = Object.keys(CODENAMES);
+// internal ids only (not shown in the game)
+export const ENEMY_IDS = ['navy', 'polo', 'plum', 'cream', 'fighter', 'gangly', 'sporty', 'curvy'];
 
 // The grabbers' animation sheet is drawn WITH Zee in it (so the two are always perfectly in sync). These numbers line the real Zee up
 // with it: CLAMP_DX = how far in front of the grabber Zee stands in the clamp frame; RELEASE = where she leaves his hands (px in front
@@ -20,14 +21,19 @@ const RELEASE = { navy: { dx: 92, z: 78 }, sporty: { dx: 58, z: 46 } };
 export class Enemy {
   constructor(id, character, x, y) {
     this.id = id; this.character = character; this.anims = character.anims;
-    this.canGrab = !!character.manifest.grab;
-    this.name = CODENAMES[id] || id.toUpperCase();
+    this.heavy = !!character.manifest.grab;                          // navy + sporty: tougher, harder hitting, can grab
+    this.canGrab = this.heavy;
     this.x = x; this.y = y; this.z = 0; this.vx = 0; this.face = 1;
-    this.hp = this.maxHp = E.hp;
-    this.speed = E.walkSpeed * rnd(0.9, 1.15);
-    this.prefersRange = !this.canGrab && Math.random() < 0.5;     // some enemies keep their distance and throw headsets
-    this.flash = 0; this.barT = 0; this.spawnT = 0.5; this.cool = rnd(0.8, 1.4);
-    this.mx = 0; this.my = 0; this.decideT = 0; this.still = 0; this.faceT = 0;
+    this.hp = this.maxHp = this.heavy ? E.heavyHp : E.hp;
+    this.dmgMul = this.heavy ? E.heavyDmgMul : 1;
+    this.aggr = rnd(0.9, 1.25) * (this.heavy ? 1.1 : 1);              // how fast it recovers between attacks
+    this.speed = E.walkSpeed * rnd(0.95, 1.2) * (this.heavy ? 1.05 : 1);
+    this.atkRate = this.heavy ? 1.12 : 1.1;                           // their swings are quicker than the raw animation
+    this.evadeChance = this.heavy ? 0.12 : 0.4;
+    this.prefersRange = !this.canGrab && Math.random() < 0.45;       // some enemies keep their distance and throw headsets
+    this.side = sgn(x - 320);                                         // which side of Zee it likes to fight from
+    this.flash = 0; this.barT = 0; this.spawnT = 0.5; this.cool = rnd(0.5, 0.9);
+    this.mx = 0; this.my = 0; this.decideT = 0; this.still = 0; this.sideT = 0; this.hitCool = 0; this.combo = 0; this.evadeId = -1; this.evadeT = 0;
     this.hitId = -1; this.holdingZee = false; this.struggle = 0; this.deadT = 0; this.remove = false;
     this.state = 'spawn'; this.attackName = 'punch';
     this._play('idle');
@@ -38,33 +44,40 @@ export class Enemy {
   get done() { return this.t >= this.anim.duration; }
   snapshot() { this.px = this.x; this.py = this.y; }
   canBeHit() { return !['spawn', 'dead', 'down'].includes(this.state) && !this.holdingZee; }
+  get attacking() { return ['attack', 'grab', 'hold', 'throw'].includes(this.state); }
 
-  breakFree() { this.holdingZee = false; this.state = 'hurt'; this._play('hurt'); this.vx = -this.face * 40; }
+  breakFree() { this.holdingZee = false; this.state = 'hurt'; this._play('hurt'); this.vx = -this.face * 40; this.cool = 1.2; }
 
   // returns false if ignored, 'kill' if it killed, true otherwise
   takeHit(dmg, dir, knock) {
     if (!this.canBeHit()) return false;
-    this.hp -= dmg; this.flash = 0.22; this.barT = 2.4;
+    this.hp -= dmg; this.flash = 0.22; this.barT = 2.6;
     if (this.hp <= 0) { this.hp = 0; this.state = 'dead'; this._play('defeat'); this.vx = dir * 100; this.deadT = 0; return 'kill'; }
-    if (knock) { this.state = 'down'; this._play('knockdown'); this.vx = dir * 120; }
-    else { this.state = 'hurt'; this._play('hurt'); this.vx = dir * 55; }
+    if (knock) { this.state = 'down'; this._play('knockdown'); this.vx = dir * 120; this.hitCool = 0; return true; }
+    // committed swings (past the wind-up) can't be flinched by a light hit, and nobody can be stun-locked forever
+    const committed = (this.state === 'attack' && this.frame >= Math.min(...this.anim.active)) || this.state === 'ranged' && this.frame >= (this.anim.release[0] || 0);
+    if (committed || this.hitCool > 0) return true;
+    this.state = 'hurt'; this._play('hurt'); this.vx = dir * 55; this.hitCool = E.hitCool; this.combo = 0;
     return true;
   }
 
   update(dt, g) {
-    if (this.state !== 'whiff') this.t += dt * (this.animName === 'walk' ? 1.5 : 1);       // the walk loop is one step (12 frames): played at the speed that matches how fast they walk, so feet don't slide
+    const rate = this.animName === 'walk' ? 1.5 : (this.state === 'attack' ? this.atkRate : 1);    // walk loop = one step, played at the pace they walk
+    if (this.state !== 'whiff') this.t += dt * rate;
     this.flash = Math.max(0, this.flash - dt);
     this.barT = Math.max(0, this.barT - dt);
+    this.hitCool = Math.max(0, this.hitCool - dt);
     switch (this.state) {
       case 'spawn': this.spawnT -= dt; if (this.spawnT <= 0) { this.state = 'idle'; this._play('idle'); } break;
       case 'idle': case 'walk': this._free(dt, g); break;
+      case 'evade': this._evade(dt, g); break;
       case 'attack': this._attack(dt, g); break;
       case 'ranged': this._ranged(dt, g); break;
       case 'grab': this._grab(dt, g); break;
-      case 'whiff': this.whiffT -= dt; if (this.whiffT <= 0) this._back(1.0); break;
+      case 'whiff': this.whiffT -= dt; if (this.whiffT <= 0) this._back(0.7); break;
       case 'hold': this._hold(dt, g); break;
       case 'throw': this._throw(dt, g); break;
-      case 'hurt': this.x += this.vx * dt; this.vx *= Math.pow(0.02, dt); if (this.done) this._back(0.35); break;
+      case 'hurt': this.x += this.vx * dt; this.vx *= Math.pow(0.02, dt); if (this.done) this._back(0.2); break;
       case 'down': this._down(dt); break;
       case 'dead':
         this.x += this.vx * dt; this.vx *= Math.pow(0.04, dt);
@@ -76,83 +89,117 @@ export class Enemy {
     this.y = Math.max(b.minY, Math.min(b.maxY, this.y));
   }
 
-  _back(cd) { this.state = 'idle'; this._play('idle'); this.cool = Math.max(this.cool, cd); }
+  _back(cd) { this.state = 'idle'; this._play('idle'); this.cool = Math.max(this.cool, cd / this.aggr); }
+  _faceZee(z) { if (Math.abs(z.x - this.x) > 5) this.face = z.x > this.x ? 1 : -1; }
 
+  // ---------- on the move ----------
   _free(dt, g) {
     const z = g.zee, dx = z.x - this.x, dy = z.y - this.y, adx = Math.abs(dx), ady = Math.abs(dy);
-    this.cool -= dt;
-    const idleOnly = z.state === 'defeat';
-    if (!idleOnly && adx > 8) {                    // turn only after she has been on the other side for a moment (no flip-flopping)
-      const want = dx > 0 ? 1 : -1;
-      if (want !== this.face) { this.faceT += dt; if (this.faceT > 0.12) { this.face = want; this.faceT = 0; } } else this.faceT = 0;
-    }
-    // Decide where to move only a few times a second (and keep going meanwhile): re-deciding every frame made enemies flick
-    // between walk and idle near the edge of their spacing, restarting the animation each time.
-    this.decideT -= dt;
-    if (this.decideT <= 0) {
-      this.decideT = 0.2;
-      let mx = 0, my = 0;
-      if (!idleOnly) {
-        if (this.prefersRange && adx > E.attackRange + 60) {
-          if (adx < E.keepDistance - 40) mx = -Math.sign(dx) * 0.8;                                   // back off
-          else if (adx > E.keepDistance + 60) mx = Math.sign(dx);                                     // come closer
-          if (ady > 10) my = Math.sign(dy) * 0.7;
-        } else {
-          if (ady > E.engageY + 3) my = Math.sign(dy) * 0.75;
-          if (adx > E.attackRange) mx = Math.sign(dx); else if (adx < 12) mx = -Math.sign(dx) * 0.5;       // only step back if literally on top of her
-        }
+    this.cool -= dt * this.aggr;
+    const calm = z.state === 'defeat';
+    if (!calm) this._faceZee(z);                                    // always looking at her: swings are never thrown the wrong way
+    // she just whiffed or is stuck in a recovery: punish it
+    if (z.state === 'attack' && z.anim.active.length && z.frame > Math.max(...z.anim.active) && adx < E.attackRange + 40) this.cool = Math.min(this.cool, 0.06);
+    // she starts a swing next to me: maybe sidestep it, then counter
+    if (!calm && z.state === 'attack' && z.attackId !== this.evadeId && adx < 78 && ady < 22 && z.anim.active.length && z.frame < Math.min(...z.anim.active)) {
+      this.evadeId = z.attackId;
+      if (Math.random() < this.evadeChance) {
+        this.state = 'evade'; this.evadeT = 0.28; this._play('walk');
+        this.mx = -sgn(dx) * 0.9; this.my = (ady > 6 ? -sgn(dy) : (Math.random() < 0.5 ? 1 : -1)) * 1.1; return;
       }
-      this.mx = mx; this.my = my;
+    }
+    // pick a spot: melee fighters stand in front of her on their own side; if that side is crowded they go around to the other
+    this.decideT -= dt; this.sideT -= dt;
+    if (this.decideT <= 0) {
+      this.decideT = 0.18;
+      if (this.sideT <= 0) {
+        const crowd = g.enemies.filter((o) => o !== this && o.state !== 'dead' && sgn(o.x - z.x) === this.side && Math.abs(o.x - z.x) < 90 && Math.abs(o.y - this.y) < 40).length;
+        if (crowd >= 1 && Math.random() < 0.7) { this.side = -this.side; this.sideT = 2.2; }       // flank
+      }
+      const wait = g.attackerCount() >= g.maxAttackers && !this.attacking;                        // too many already attacking: circle and wait
+      let tx, mx = 0, my = 0;
+      if (calm) { this.mx = 0; this.my = 0; }
+      else {
+        if (this.prefersRange) {
+          const want = E.keepDistance * this.side;
+          tx = z.x + want;
+          if (adx < E.attackRange + 30) tx = z.x + this.side * (E.attackRange * 0.8);              // she is on top of me: fight
+        } else tx = z.x + this.side * (wait ? E.attackRange + 70 : E.attackRange * 0.8);
+        const ex = tx - this.x;
+        if (Math.abs(ex) > 7) mx = sgn(ex) * (this.heavy && Math.abs(ex) > 170 ? 1.35 : 1);       // heavies charge in from afar
+        if (ady > 5) my = sgn(dy) * 0.85;
+        this.mx = mx; this.my = my;
+      }
     }
     if (this.mx || this.my) {
-      this.x += this.mx * this.speed * dt; this.y += this.my * this.speed * CONFIG.zee.depthSpeedFactor * dt;
+      this.x += this.mx * this.speed * dt; this.y += this.my * this.speed * CONFIG.zee.depthSpeedFactor * dt * 1.15;
       this.still = 0;
       if (this.state !== 'walk') { this.state = 'walk'; this._play('walk'); }
     } else {
       this.still += dt;
       if (this.state === 'walk' && this.still > 0.15) { this.state = 'idle'; this._play('idle'); }
     }
-    if (idleOnly || this.cool > 0) return;
-    // pick an attack
-    if (adx < E.attackRange + 8 && ady < E.engageY + 5) {
+    if (calm || this.cool > 0 || z.state === 'held') return;
+    // ---- choose an attack ----
+    const inRange = adx < E.attackRange + 8 && ady < E.engageY + 4;
+    if (inRange && g.attackerCount() < g.maxAttackers) {
       if (this.canGrab && Math.random() < E.grabChance && z.canBeGrabbed()) { this.state = 'grab'; this._play('grab'); g.sfx.grab(); return; }
-      this.attackName = Math.random() < 0.55 ? 'punch' : 'kick';
-      this.state = 'attack'; this.hitDone = false; this._play(this.attackName);
-    } else if (!this.canGrab && adx > 120 && adx < 440 && ady < 22 && (this.prefersRange || Math.random() < 0.012)) {
-      this.state = 'ranged'; this.fired = false; this._play('throw_headset'); this.face = dx > 0 ? 1 : -1;
+      this.combo = this.combo > 0 ? this.combo : (Math.random() < 0.6 ? Math.floor(rnd(1, 3.4)) : 0);   // 0-2 follow-up hits
+      this._startMelee(g);
+    } else if (!this.canGrab && adx > 130 && adx < 460 && ady < 9 && (this.prefersRange || Math.random() < 0.02)) {
+      this.state = 'ranged'; this.fired = false; this._play('throw_headset'); this._faceZee(z);
     }
   }
 
+  _startMelee(g) {
+    this.attackName = this.combo % 2 === 0 ? 'punch' : 'kick';
+    if (Math.random() < 0.2) this.attackName = this.attackName === 'punch' ? 'kick' : 'punch';
+    this.state = 'attack'; this.hitDone = false; this._play(this.attackName);
+  }
+
+  _evade(dt, g) {
+    this.evadeT -= dt;
+    this.x += this.mx * this.speed * 1.9 * dt; this.y += this.my * this.speed * 1.0 * dt;
+    if (this.evadeT <= 0) { this.state = 'idle'; this._play('idle'); this.cool = 0.05; this.combo = 1; }   // and straight back in
+  }
+
   _attack(dt, g) {
-    const f = this.frame, a = this.anim, z = g.zee;
-    if (f >= 1 && f <= Math.max(...a.active) && Math.abs(z.x - this.x) > 30) this.x += this.face * 40 * dt;    // step into the swing (never through her)
+    const f = this.frame, a = this.anim, z = g.zee, first = Math.min(...a.active), last = Math.max(...a.active);
+    if (f < first) this._faceZee(z);                                  // can still re-aim during the wind-up (she jumped over / went round), never after
+    if (f >= 1 && f <= last && Math.abs(z.x - this.x) > 30) this.x += this.face * 48 * dt;    // step into the swing (never through her)
     if (!this.hitDone && a.active.includes(f)) {
       const dx = (z.x - this.x) * this.face;
-      if (dx > -10 && dx < E.attackRange + 18 && Math.abs(z.y - this.y) < 16 && z.z < 40) {
-        const dmg = this.attackName === 'punch' ? E.punchDmg : E.kickDmg;
+      if (dx > -8 && dx < E.attackRange + 20 && Math.abs(z.y - this.y) < 17 && z.z < 40) {
+        const dmg = Math.round((this.attackName === 'punch' ? E.punchDmg : E.kickDmg) * this.dmgMul);
         if (g.hurtZee(dmg, this.face, this)) this.hitDone = true;
       }
     }
-    if (this.done) this._back(rnd(...E.cooldown));
+    if (this.done) {
+      const dx = Math.abs(z.x - this.x), dy = Math.abs(z.y - this.y);
+      if (this.combo > 0 && dx < E.attackRange + 24 && dy < E.engageY + 6 && z.state !== 'defeat' && z.state !== 'down') {
+        this.combo--; this._faceZee(z); this._startMelee(g); this.cool = 0;             // chain the next hit
+      } else { this.combo = 0; this._back(rnd(...E.cooldown)); }
+    }
   }
 
   _ranged(dt, g) {
     if (!this.fired && this.frame >= this.anim.release[0]) { this.fired = true; g.fireHeadset(this); }
-    if (this.done) this._back(rnd(1.4, 2.4));
+    if (this.done) this._back(rnd(1.0, 1.9));
   }
 
+  // ---------- heavies: grab and throw ----------
   // coil -> lunge -> CLAMP (the catch) -> hoist -> overhead. Zee is drawn inside this animation from the clamp frame on.
   _grab(dt, g) {
     const f = this.frame, z = g.zee, clamp = this.anim.active[0];
     if (!this.holdingZee) {
-      if (f < clamp) { this.x += this.face * 90 * dt; return; }                  // lunge in
+      if (f < clamp) { this._faceZee(z); this.x += this.face * 100 * dt; return; }               // lunge in
       const dx = (z.x - this.x) * this.face;
       if (dx > -14 && dx < E.grabRange + 14 && Math.abs(z.y - this.y) < 16 && z.canBeGrabbed()) {
         this.holdingZee = true; this.struggle = 0; z.getGrabbed(this);
-        this.x = z.x - this.face * (CLAMP_DX[this.id] || 50); this.y = z.y;          // line up with the clamp pose (a few px at most)
+        this.x = z.x - this.face * (CLAMP_DX[this.id] || 50); this.y = z.y;                      // line up with the clamp pose (a few px at most)
         g.sfx.grab(); g.shake = Math.max(g.shake, 2.5); g.hitstop = Math.max(g.hitstop, 0.05);
-      } else {                                                                      // missed: she dodged or jumped away
-        this.state = 'whiff'; this.whiffT = 0.4; this.t = this.anim.starts[clamp] - 0.001;
+      } else {                                                                                   // missed: she dodged or jumped away
+        this.state = 'whiff'; this.whiffT = 0.35; this.t = this.anim.starts[clamp] - 0.001;
       }
       return;
     }
@@ -173,13 +220,13 @@ export class Enemy {
       this.thrown = true; this.holdingZee = false;
       g.zee.throwAway(this.face, this.x + this.face * R.dx, R.z); g.onThrow();
     }
-    if (this.done) this._back(rnd(1.2, 1.8));
+    if (this.done) this._back(rnd(1.0, 1.5));
   }
 
   _down(dt) {
     this.x += this.vx * dt; this.vx *= Math.pow(0.05, dt);
-    if (this.animName === 'knockdown' && this.t >= this.anim.duration + 0.55) this._play('get_up');
-    else if (this.animName === 'get_up' && this.done) this._back(0.5);
+    if (this.animName === 'knockdown' && this.t >= this.anim.duration + 0.5) this._play('get_up');
+    else if (this.animName === 'get_up' && this.done) { this._back(0.25); this.combo = 1; }
   }
 
   // ---------- drawing ----------
@@ -199,15 +246,16 @@ export class Enemy {
     ctx.drawImage(silhouette(ch, this.anim, this.frame), -ch.anchor.x * ch.scale, -ch.anchor.y * ch.scale, dw, dh);
     ctx.restore(); ctx.globalAlpha = 1;
     drawAnim(ctx, ch, this.anim, this.frame, x, y, this.face, fade, this.flash * 6);
-    // name + health bar for a moment after being hit
+    // health bar with the HP number beside it, for a moment after being hit
     if (this.barT > 0 && this.state !== 'dead') {
-      const bw = 34, bx = Math.round(x - bw / 2), by = Math.round(y - ch.manifest.gameHeight - 12);
+      const bw = this.heavy ? 44 : 34, bx = Math.round(x - bw / 2 - 6), by = Math.round(y - ch.manifest.gameHeight - 12);
       ctx.globalAlpha = Math.min(1, this.barT * 2);
       ctx.fillStyle = '#10101a'; ctx.fillRect(bx - 1, by - 1, bw + 2, 6);
       ctx.fillStyle = '#3a2430'; ctx.fillRect(bx, by, bw, 4);
       ctx.fillStyle = '#e2574c'; ctx.fillRect(bx, by, Math.round(bw * this.hp / this.maxHp), 4);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 7px ui-monospace, Consolas, monospace'; ctx.textAlign = 'center';
-      ctx.fillText(this.name, x, by - 3); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 7px ui-monospace, Consolas, monospace'; ctx.textAlign = 'left';
+      ctx.lineWidth = 2; ctx.strokeStyle = '#10101a'; const t = String(Math.ceil(this.hp));
+      ctx.strokeText(t, bx + bw + 3, by + 4); ctx.fillText(t, bx + bw + 3, by + 4); ctx.globalAlpha = 1;
     }
   }
 }

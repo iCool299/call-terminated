@@ -1,4 +1,4 @@
-# v2 game-facing animation table (higher frame counts). from/to are 0-based inclusive frame indexes in the strip.
+﻿# v2 game-facing animation table (higher frame counts). from/to are 0-based inclusive frame indexes in the strip.
 # 'active' = frames that can hit, 'iframes' = invulnerable frames, loopFrom = frame a looping animation returns to.
 $anims = @(
     @{ name='idle';        strip='idle';        from=0; to=11; fps=10; loop=$true },
@@ -21,6 +21,9 @@ $anims = @(
     @{ name='defeat';      strip='defeat';      from=0; to=11; fps=12; loop=$false },
     @{ name='victory';     strip='victory';     from=0; to=11; fps=10; loop=$true; loopFrom=6 },
     @{ name='interact';    strip='interact';    from=0; to=7;  fps=14; loop=$false },
-    @{ name='grabbed';     strip='grabbed';     from=1; to=8;  fps=12; loop=$true },
-    @{ name='thrown';      strip='grabbed';     from=9; to=15; fps=14; loop=$false }
+            @{ name='thrown';      strip='prone';       from=1; to=5;  fps=12; loop=$false },
+    @{ name='prone_land';  strip='prone';       from=6; to=7;  fps=14; loop=$false },
+    @{ name='prone_lie';   strip='prone';       from=8; to=9;  fps=2.5; loop=$true },
+    @{ name='get_up_prone';strip='prone';       from=10; to=15; fps=12; loop=$false; iframes=@(0,1,2,3,4,5) }
 )
+

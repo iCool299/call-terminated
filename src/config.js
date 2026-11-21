@@ -20,6 +20,7 @@ export const CONFIG = {
     makeupIdleDelay: 2.5,             // seconds standing still before the makeup idle plays
     invulnerabilityAfterHit: 0.9,
     knockdownHold: 0.7,                // seconds lying on the floor before getting up
+    proneHold: 1.1,                    // seconds lying face-down after a throw before she gets up
     // forward step (px) during the swing of each attack
     lunge: { punch_1: 22, punch_2: 26, punch_3: 40, special: 0, jump_kick: 0 },
     // Printout Barrage: sheets of paper fired forward during the special's hit frames
@@ -35,17 +36,21 @@ export const CONFIG = {
   },
 
   enemy: {
-    hp: 60,
-    walkSpeed: 78,
+    hp: 100,                           // every enemy
+    heavyHp: 200,                      // the two heavies (navy + sporty)
+    heavyDmgMul: 1.4,                  // heavies hit 40% harder
+    hitCool: 0.5,                      // after a flinch, light hits can't flinch them again for this long (no stun-lock)
+    maxAttackers: 2,                   // at most this many attack at once (the rest circle and flank); 3 when the room is crowded
+    walkSpeed: 96,
     attackRange: 46,                   // how close they stand to attack
     engageY: 12,                       // how well they line up in depth before attacking
-    punchDmg: 6, kickDmg: 8,
-    headsetDmg: 8, headsetSpeed: 250,  // thrown call-centre headset (jump over it!)
-    grabRange: 54, grabChance: 0.35,   // grabbers (navy, sporty) try to grab Zee this often
+    punchDmg: 9, kickDmg: 12,
+    headsetDmg: 10, headsetSpeed: 270, // thrown call-centre headset (jump over it!)
+    grabRange: 56, grabChance: 0.4,    // grabbers (navy, sporty) try to grab Zee this often
     throwDamagePct: 0.2,               // being thrown costs this share of Zee's max HP
     throwSpeed: 300, throwLift: 520,
     holdTime: 1.0,                     // seconds he holds her overhead (mash buttons to break free) before throwing
-    cooldown: [0.9, 1.8],              // seconds between attacks
+    cooldown: [0.45, 1.1],             // seconds between attacks
     keepDistance: 190,                 // headset throwers like to stay about this far away
     corpseTime: 1.8,
   },

@@ -18,6 +18,7 @@ $sheets = @(
     (Cfg 'defeat'      'defeat_v2.png'      12 3 323),
     (Cfg 'victory'     'victory_v2.png'     12 3 323),
     (Cfg 'interact'    'interact_v2.png'     8 2 387),
-    (Cfg 'grabbed'     'grabbed_v1.png'     16 4 -1)    # frame 1 = neutral standing (scale calibration only); 2-9 held, 10-16 thrown
+    (Cfg 'prone'       'prone_v1.png'       16 4 -1)    # frame 1 = neutral standing (scale only); 2-6 flight face-down, 7-8 belly flop, 9-10 lying, 11-16 get up from the floor
 )
+
 
