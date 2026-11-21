@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611211943';
-import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211943';
+import { CONFIG } from './config.js?v=202611211950';
+import { frameAt, drawAnim, silhouette } from './assets.js?v=202611211950';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);

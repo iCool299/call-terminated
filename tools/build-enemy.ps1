@@ -64,5 +64,7 @@ $manifest = [ordered]@{
     facing = 'right'; strips = $strips; animations = $anims
 }
 $manifest | ConvertTo-Json -Depth 6 | Out-File (Join-Path $out "$Id.manifest.json") -Encoding ascii
-if ($have -contains 'w') { & (Join-Path $PSScriptRoot 'order-walk.ps1') -Id $Id }            # smoothest walk loop (always run after a build)
+if ($have -contains 'w') { & (Join-Path $PSScriptRoot 'order-walk.ps1') -Id $Id }
+# head lock: one clean head pasted on every walk / idle frame (stops the face redrawing slightly differently each frame)
+foreach ($an in 'walk', 'idle') { & (Join-Path $PSScriptRoot 'lock-head.ps1') -Id $Id -Anim $an | Out-Null }            # smoothest walk loop (always run after a build)
 Write-Host "built $Id :$($sheets.Count) strips, $($anims.Count) animations (cell ${cw}x${ch}) -> $out"
