@@ -1,141 +1,141 @@
 {
-  "character": "sporty",
-  "grab": true,
-  "gameHeight": 118,
-  "cell": {
-    "w": 464,
-    "h": 352
+ "character": "sporty",
+ "grab": true,
+ "gameHeight": 118,
+ "cell": {
+  "w": 464,
+  "h": 352
+ },
+ "anchor": {
+  "x": 232,
+  "y": 328
+ },
+ "drawScale": 0.5,
+ "facing": "right",
+ "strips": {
+  "a": {
+   "file": "sporty_a.png",
+   "frames": 16,
+   "cols": 8
   },
-  "anchor": {
-    "x": 232,
-    "y": 328
+  "b": {
+   "file": "sporty_b.png",
+   "frames": 16,
+   "cols": 8
   },
-  "drawScale": 0.5,
-  "facing": "right",
-  "strips": {
-    "a": {
-      "file": "sporty_a.png",
-      "frames": 16,
-      "cols": 8
-    },
-    "b": {
-      "file": "sporty_b.png",
-      "frames": 16,
-      "cols": 8
-    },
-    "c": {
-      "file": "sporty_c.png",
-      "frames": 16,
-      "cols": 8
-    },
-    "d": {
-      "file": "sporty_d.png",
-      "frames": 16,
-      "cols": 8
-    },
-    "g": {
-      "file": "sporty_g.png",
-      "frames": 16,
-      "cols": 8
-    },
-    "w": {
-      "file": "sporty_w.png",
-      "frames": 12,
-      "cols": 8
-    }
+  "c": {
+   "file": "sporty_c.png",
+   "frames": 16,
+   "cols": 8
   },
-  "animations": {
-    "idle": {
-      "strip": "a",
-      "from": 0,
-      "to": 7,
-      "fps": 8,
-      "loop": true
-    },
-    "walk": {
-      "strip": "w",
-      "from": 0,
-      "to": 11,
-      "fps": 24,
-      "loop": true
-    },
-    "punch": {
-      "strip": "b",
-      "from": 0,
-      "to": 7,
-      "fps": 22,
-      "loop": false,
-      "active": [
-        3,
-        4
-      ]
-    },
-    "kick": {
-      "strip": "b",
-      "from": 8,
-      "to": 15,
-      "fps": 22,
-      "loop": false,
-      "active": [
-        3,
-        4
-      ]
-    },
-    "hurt": {
-      "strip": "c",
-      "from": 0,
-      "to": 3,
-      "fps": 14,
-      "loop": false
-    },
-    "knockdown": {
-      "strip": "c",
-      "from": 4,
-      "to": 9,
-      "fps": 14,
-      "loop": false
-    },
-    "get_up": {
-      "strip": "c",
-      "from": 10,
-      "to": 15,
-      "fps": 12,
-      "loop": false
-    },
-    "defeat": {
-      "strip": "d",
-      "from": 0,
-      "to": 7,
-      "fps": 10,
-      "loop": false
-    },
-    "grab": {
-      "strip": "g",
-      "from": 1,
-      "to": 6,
-      "fps": 12,
-      "loop": false,
-      "active": [
-        2
-      ]
-    },
-    "hold": {
-      "strip": "g",
-      "from": 6,
-      "to": 8,
-      "fps": 9,
-      "loop": true,
-      "pingpong": true
-    },
-    "throw": {
-      "strip": "g",
-      "from": 9,
-      "to": 15,
-      "fps": 11,
-      "loop": false,
-      "release": [
-        3
-      ]
-    }
+  "d": {
+   "file": "sporty_d.png",
+   "frames": 16,
+   "cols": 8
+  },
+  "g": {
+   "file": "sporty_g.png",
+   "frames": 16,
+   "cols": 8
+  },
+  "w": {
+   "file": "sporty_w.png",
+   "frames": 12,
+   "cols": 8
   }
+ },
+ "animations": {
+  "idle": {
+   "strip": "a",
+   "from": 0,
+   "to": 7,
+   "fps": 8,
+   "loop": true
+  },
+  "walk": {
+   "strip": "w",
+   "from": 0,
+   "to": 11,
+   "fps": 12,
+   "loop": true
+  },
+  "punch": {
+   "strip": "b",
+   "from": 0,
+   "to": 7,
+   "fps": 22,
+   "loop": false,
+   "active": [
+    3,
+    4
+   ]
+  },
+  "kick": {
+   "strip": "b",
+   "from": 8,
+   "to": 15,
+   "fps": 22,
+   "loop": false,
+   "active": [
+    3,
+    4
+   ]
+  },
+  "hurt": {
+   "strip": "c",
+   "from": 0,
+   "to": 3,
+   "fps": 14,
+   "loop": false
+  },
+  "knockdown": {
+   "strip": "c",
+   "from": 4,
+   "to": 9,
+   "fps": 14,
+   "loop": false
+  },
+  "get_up": {
+   "strip": "c",
+   "from": 10,
+   "to": 15,
+   "fps": 12,
+   "loop": false
+  },
+  "defeat": {
+   "strip": "d",
+   "from": 0,
+   "to": 7,
+   "fps": 10,
+   "loop": false
+  },
+  "grab": {
+   "strip": "g",
+   "from": 1,
+   "to": 6,
+   "fps": 12,
+   "loop": false,
+   "active": [
+    2
+   ]
+  },
+  "hold": {
+   "strip": "g",
+   "from": 6,
+   "to": 8,
+   "fps": 9,
+   "loop": true,
+   "pingpong": true
+  },
+  "throw": {
+   "strip": "g",
+   "from": 9,
+   "to": 15,
+   "fps": 11,
+   "loop": false,
+   "release": [
+    3
+   ]
+  }
+ }
 }
