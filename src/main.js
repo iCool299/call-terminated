@@ -1,16 +1,18 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611212051';
-import { loadCharacter, VERSION, LOOK } from './assets.js?v=202611212051';
-import { Input } from './input.js?v=202611212051';
-import { Zee } from './zee.js?v=202611212051';
-import { Game } from './game.js?v=202611212051';
-import { ENEMY_IDS } from './enemy.js?v=202611212051';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611212050';
-import { unlock } from './sfx.js?v=202611212051';
+import { CONFIG } from './config.js?v=202611212056';
+import { loadCharacter, VERSION, LOOK } from './assets.js?v=202611212056';
+import { Input } from './input.js?v=202611212056';
+import { Zee } from './zee.js?v=202611212056';
+import { Game } from './game.js?v=202611212056';
+import { ENEMY_IDS } from './enemy.js?v=202611212056';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611212056';
+import { unlock } from './sfx.js?v=202611212056';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+// NOT desynchronized: that low-latency mode can show a frame while it is still being drawn, so the sprites and HUD
+// flickered (the screen sometimes showed just the background). Normal buffering only ever shows finished frames.
+const ctx = canvas.getContext('2d', { alpha: false });
 const bg = document.createElement('canvas');      // the static office is painted once, then just blitted
 const bgCtx = bg.getContext('2d');
 let k = 1;                                        // internal pixels per game pixel (canvas renders at display resolution)
