@@ -1,6 +1,6 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js?v=202611212038';
+import { CONFIG } from './config.js?v=202611212040';
 
 // Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
 export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -105,11 +105,11 @@ export function frameAt(anim, t) {
 // a soft scene colour wash and a per-character colour grade so the whole cast shares one look.
 export const LOOK = {
   on: true,
-  lightX: -1, lightY: -1,                        // light comes from the back-top-left (the windows), in world space
-  rim: 'rgb(200,222,255)', rimAlpha: 0.55, rimPx: 3,
-  outline: '#130d1a', outlinePx: 2,
-  feet: 0.26,                                    // how much darker the legs get towards the floor
-  wash: 'rgba(60,70,130,0.10)',                  // scene colour wash (per level later)
+  lightX: -1, lightY: -0.55,                        // light comes from the back-top-left (the windows), in world space
+  rim: 'rgb(215,232,255)', rimAlpha: 0.72, rimPx: 5,
+  outline: '#0d0812', outlinePx: 3,
+  feet: 0.42,                                    // how much darker the legs get towards the floor
+  wash: 'rgba(60,70,130,0.16)',                  // scene colour wash (per level later)
   grade: { zee: '', default: 'saturate(0.9) contrast(1.04)' },   // enemies brought to Zee's saturation
 };
 let S1, S2;
