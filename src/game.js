@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611212040';
-import { Enemy } from './enemy.js?v=202611212040';
-import { SOFT } from './zee.js?v=202611212040';
-import { sfx } from './sfx.js?v=202611212040';
+import { CONFIG } from './config.js?v=202611212044';
+import { Enemy } from './enemy.js?v=202611212044';
+import { SOFT } from './zee.js?v=202611212044';
+import { sfx } from './sfx.js?v=202611212044';
 
 const E = CONFIG.enemy;
 
@@ -54,7 +54,8 @@ export class Game {
   hurtZee(dmg, dir, src) {
     const z = this.zee;
     if (!z.takeHit(dmg, dir)) return false;
-    this._impact(z.x, z.y, 62, dmg, '#ff5a4a', 1.0);
+    this._impact(z.x, z.y, 62, dmg, '#ff5a4a', 1.0); z.squash = 1;
+    if (dmg >= 12) this._sweat(z.x, z.y, 70, -dir, 4);
     this.shake = Math.max(this.shake, 3); this.hitstop = Math.max(this.hitstop, 0.06);
     sfx.hurt(); try { navigator.vibrate && navigator.vibrate(25); } catch (e) { /* not supported */ }
     return true;
@@ -68,6 +69,7 @@ export class Game {
     if (!r) return false;
     const kill = r === 'kill';
     this._impact(e.x - dir * 6, e.y, 66, dmg, kill ? '#ffd24a' : '#fff1b0', kill ? 1.4 : knock ? 1.2 : 1);
+    if (kill || knock) this._sweat(e.x, e.y, (e.character.manifest.gameHeight || 140) * 0.8, dir, kill ? 7 : 5);
     this.hitstop = Math.max(this.hitstop, kill ? 0.14 : knock ? 0.09 : 0.05);
     this.shake = Math.max(this.shake, kill ? 6 : knock ? 4 : 1.6);
     sfx.hit(kill || knock ? 1.25 : 0.9); if (kill) { sfx.ko(); this.kos++; }
@@ -140,6 +142,7 @@ export class Game {
     if (this.hitstop > 0) { this.hitstop -= dt; return; }          // freeze for a beat on impact
     const z = this.zee;
     z.update(dt, input, this.bounds);
+    this._zeeDust(dt);
     for (const ev of z.events.splice(0)) {
       if (ev.type === 'slam') {
         this._impact(z.x, z.y, 14, ev.dmg, '#ff5a4a', 1.5);
@@ -158,6 +161,7 @@ export class Game {
     this.enemies = this.enemies.filter((e) => !e.remove);
     this.comboT -= dt; if (this.comboT <= 0) this.combo = 0;
     this.shake = Math.max(0, this.shake - dt * 22);
+    z.squash = Math.max(0, (z.squash || 0) - dt * 6);
     // sandbox: she gets back up after being knocked out
     if (z.state === 'defeat' && z.done) { this.reviveT += dt; if (this.reviveT > 2.2) { z.hp = CONFIG.zee.maxHp; z.z = 0; z.vz = 0; z._enter('idle'); z.invuln = 1.2; this.reviveT = 0; } }
     else this.reviveT = 0;
@@ -174,6 +178,7 @@ export class Game {
   _impact(x, y, z, dmg, color, size) {
     this._burst(x, y, z, 9, [color, '#ffffff'], 190 * size, 'spark');
     this.parts.push({ type: 'ring', x, y, z, vx: 0, vz: 0, t: 0, life: 0.18, r: 22 * size, color });
+    this.parts.push({ type: 'star', x, y, z, vx: 0, vz: 0, t: 0, life: 0.12, r: 13 * size, color });
     this._text(x, y, z + 20, String(dmg), color);
   }
   _burst(x, y, z, n, colors, speed, type) {
@@ -182,6 +187,33 @@ export class Game {
       const dust = type === 'dust';
       this.parts.push({ type, x, y, z, vx: Math.cos(a) * s, vz: dust ? Math.abs(Math.sin(a)) * s * 0.4 : Math.sin(a) * s * 0.8, t: 0, life: dust ? 0.5 + Math.random() * 0.3 : 0.22 + Math.random() * 0.12, color: colors[i % colors.length], g: dust ? 0 : 500, drag: dust ? 0.96 : 0.9 });
     }
+  }
+  // sweat drops flung off on a heavy hit (away from the punch)
+  _sweat(x, y, z, dir, n) {
+    for (let i = 0; i < n; i++) this.parts.push({ type: 'drop', x, y, z: z + Math.random() * 10, vx: dir * (50 + Math.random() * 90), vz: 90 + Math.random() * 110, t: 0, life: 0.45, color: '#cfe8ff', g: 520, drag: 0.98 });
+  }
+  // dust puffs on the floor: footsteps (small) and bodies / landings (big)
+  footDust(x, y, size = 1) {
+    for (let i = 0; i < 2; i++) this.parts.push({ type: 'puff', x: x + (Math.random() - 0.5) * 6, y: y + (Math.random() - 0.5) * 2, z: 1, vx: (Math.random() - 0.5) * 22, vz: 6 + Math.random() * 8, t: 0, life: 0.35 + Math.random() * 0.15, size: 4 * size, color: '#bdb6cf', drag: 0.94 });
+  }
+  floorDust(x, y, size = 1) {
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * 6.283, s = (40 + Math.random() * 50) * size;
+      this.parts.push({ type: 'puff', x: x + Math.cos(a) * 10 * size, y, z: 2, vx: Math.cos(a) * s, vz: 8 + Math.random() * 18, t: 0, life: 0.5 + Math.random() * 0.25, size: 7 * size, color: '#c7c0d8', drag: 0.93 });
+    }
+    this.shake = Math.max(this.shake, 2 * size);
+  }
+  _zeeDust(dt) {
+    const z = this.zee, prevZ = this._zz ?? 0, px = this._zx ?? z.x;
+    this._zz = z.z; this._zx = z.x;
+    if (prevZ > 6 && z.z <= 0.5 && !['held', 'thrown'].includes(z.state)) this.floorDust(z.x, z.y, 0.6);          // landing from a jump
+    if (z.z <= 0.5 && (z.state === 'run' || z.state === 'walk')) {
+      this._zStep = (this._zStep || 0) + Math.abs(z.x - px);
+      if (this._zStep > (z.state === 'run' ? 26 : 44)) { this._zStep = 0; this.footDust(z.x - z.face * 8, z.y, z.state === 'run' ? 1 : 0.6); }
+    }
+    const lying = z.animName === 'knockdown' && z.frame >= z.anim.frames - 3;
+    if (lying && !this._zLanded) this.floorDust(z.x, z.y, 1.1);
+    this._zLanded = lying || (this._zLanded && z.state === 'down');
   }
   // floating numbers never pile up: a new one that would land on a fresh one is lifted above it
   _text(x, y, z, text, color) {
@@ -196,8 +228,8 @@ export class Game {
   // ---------- drawing ----------
   draw(ctx, alpha) {
     const z = this.zee;
-    const list = [{ y: z.py !== undefined ? z.py + (z.y - z.py) * alpha : z.y, d: () => z.draw(ctx, alpha) }];
-    for (const e of this.enemies) list.push({ y: e.py !== undefined ? e.py + (e.y - e.py) * alpha : e.y, d: () => e.draw(ctx, alpha) });
+    const list = [{ y: z.py !== undefined ? z.py + (z.y - z.py) * alpha : z.y, d: () => this._scaled(ctx, z, alpha, () => z.draw(ctx, alpha)) }];
+    for (const e of this.enemies) list.push({ y: e.py !== undefined ? e.py + (e.y - e.py) * alpha : e.y, d: () => this._scaled(ctx, e, alpha, () => e.draw(ctx, alpha)) });
     list.sort((a, b) => a.y - b.y);
     for (const it of list) it.d();
     this._drawShots(ctx);
@@ -216,6 +248,14 @@ export class Game {
       }
       ctx.textAlign = 'left';
     }
+  }
+
+  // depth: further back (higher on screen) = a little smaller; plus a short squash on a hit, both around the feet
+  _scaled(ctx, c, alpha, draw) {
+    const b = this.bounds, x = c.px !== undefined ? c.px + (c.x - c.px) * alpha : c.x, y = c.py !== undefined ? c.py + (c.y - c.py) * alpha : c.y;
+    const depth = 1 + ((y - (b.minY + b.maxY) / 2) / ((b.maxY - b.minY) / 2)) * 0.06, q = c.squash || 0;
+    if (Math.abs(depth - 1) < 0.002 && q < 0.01) return draw();
+    ctx.save(); ctx.translate(x, y); ctx.scale(depth * (1 + 0.1 * q), depth * (1 - 0.08 * q)); ctx.translate(-x, -y); draw(); ctx.restore();
   }
 
   _drawShots(ctx) {
@@ -238,6 +278,17 @@ export class Game {
     } else if (p.type === 'spark') {
       ctx.globalAlpha = 1 - k; ctx.strokeStyle = p.color; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(p.x, py); ctx.lineTo(p.x - p.vx * 0.045, py + p.vz * 0.045); ctx.stroke();
+    } else if (p.type === 'star') {                          // white impact star at the point of contact
+      const r = p.r * (0.6 + k * 0.8), w = r * 0.28;
+      ctx.globalAlpha = 1 - k; ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.moveTo(p.x - r, py); ctx.lineTo(p.x, py - w); ctx.lineTo(p.x + r, py); ctx.lineTo(p.x, py + w); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(p.x, py - r * 0.8); ctx.lineTo(p.x + w, py); ctx.lineTo(p.x, py + r * 0.8); ctx.lineTo(p.x - w, py); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = (1 - k) * 0.7; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, py, w * 1.3, 0, 6.283); ctx.fill();
+    } else if (p.type === 'drop') {
+      ctx.globalAlpha = 1 - k; ctx.fillStyle = p.color; ctx.beginPath(); ctx.ellipse(p.x, py, 1.4, 2.4, Math.atan2(-p.vz, p.vx) + 1.57, 0, 6.283); ctx.fill();
+    } else if (p.type === 'puff') {
+      const r = p.size * (0.5 + k * 0.9); ctx.globalAlpha = 0.42 * (1 - k); ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.ellipse(p.x, py, r, r * 0.7, 0, 0, 6.283); ctx.fill();
     } else {
       ctx.globalAlpha = 0.5 * (1 - k); ctx.fillStyle = p.color; const s = 3 + k * 5; ctx.fillRect(p.x - s / 2, py - s / 2, s, s);
     }

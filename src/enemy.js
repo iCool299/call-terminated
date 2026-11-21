@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611212040';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212040';
-import { SOFT } from './zee.js?v=202611212040';
+import { CONFIG } from './config.js?v=202611212044';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611212044';
+import { SOFT } from './zee.js?v=202611212044';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -18,15 +18,16 @@ export const ENEMY_IDS = ['navy', 'polo', 'plum', 'cream', 'fighter', 'gangly', 
 // Each enemy walks in its own way. step = length of one step as a share of its height (the walk cycle is advanced by the distance it
 // actually covers, so feet never skate), speed = walking-pace multiplier, lean = forward tilt (radians), bounce = extra lift at mid-step (px),
 // sway = side-to-side body roll (radians), turn = seconds to commit to a new facing after changing direction.
+// Personality: atk = attack animation speed, idle = idle animation speed, aggr = how quickly it attacks again.
 const WALK_STYLE = {
-  navy:    { step: 0.56, speed: 0.92, lean: 0.00, bounce: 0.6, sway: 0.010, turn: 0.14 },   // heavy and upright: slow, planted steps
-  sporty:  { step: 0.60, speed: 1.12, lean: 0.05, bounce: 1.5, sway: 0.012, turn: 0.08 },   // athletic: long bouncy strides, leans in
-  polo:    { step: 0.40, speed: 1.00, lean: 0.02, bounce: 1.3, sway: 0.030, turn: 0.10 },   // short and round: quick little steps, waddle
-  plum:    { step: 0.50, speed: 1.05, lean: 0.01, bounce: 0.7, sway: 0.008, turn: 0.09 },   // brisk and composed
-  cream:   { step: 0.52, speed: 0.98, lean: 0.02, bounce: 0.9, sway: 0.016, turn: 0.10 },   // casual stroll
-  fighter: { step: 0.55, speed: 1.15, lean: 0.07, bounce: 1.4, sway: 0.010, turn: 0.07 },   // aggressive: fast, leaning forward
-  gangly:  { step: 0.64, speed: 0.90, lean: 0.10, bounce: 0.5, sway: 0.028, turn: 0.15 },   // slouched and loose: long lazy strides
-  curvy:   { step: 0.48, speed: 1.00, lean: 0.00, bounce: 0.8, sway: 0.034, turn: 0.10 },   // confident swagger
+  navy:    { step: 0.56, speed: 0.92, lean: 0.00, bounce: 0.6, sway: 0.010, turn: 0.14, atk: 0.88, idle: 0.8, aggr: 0.9 },   // heavy and upright: slow, planted steps
+  sporty:  { step: 0.60, speed: 1.12, lean: 0.05, bounce: 1.5, sway: 0.012, turn: 0.08, atk: 1.12, idle: 1.15, aggr: 1.15 },   // athletic: long bouncy strides, leans in
+  polo:    { step: 0.40, speed: 1.00, lean: 0.02, bounce: 1.3, sway: 0.030, turn: 0.10, atk: 0.95, idle: 1.1, aggr: 0.95 },   // short and round: quick little steps, waddle
+  plum:    { step: 0.50, speed: 1.05, lean: 0.01, bounce: 0.7, sway: 0.008, turn: 0.09, atk: 1.05, idle: 0.9, aggr: 1.0 },   // brisk and composed
+  cream:   { step: 0.52, speed: 0.98, lean: 0.02, bounce: 0.9, sway: 0.016, turn: 0.10, atk: 1.0, idle: 1.0, aggr: 0.95 },   // casual stroll
+  fighter: { step: 0.55, speed: 1.15, lean: 0.07, bounce: 1.4, sway: 0.010, turn: 0.07, atk: 1.18, idle: 1.25, aggr: 1.25 },   // aggressive: fast, leaning forward
+  gangly:  { step: 0.64, speed: 0.90, lean: 0.10, bounce: 0.5, sway: 0.028, turn: 0.15, atk: 0.9, idle: 0.75, aggr: 0.85 },   // slouched and loose: long lazy strides
+  curvy:   { step: 0.48, speed: 1.00, lean: 0.00, bounce: 0.8, sway: 0.034, turn: 0.10, atk: 1.0, idle: 0.95, aggr: 1.05 },   // confident swagger
 };
 const ACCEL = 560;                                                // px/s^2: enemies speed up and slow down instead of snapping
 
@@ -41,17 +42,18 @@ export class Enemy {
     this.x = x; this.y = y; this.z = 0; this.vx = 0; this.face = 1;
     this.hp = this.maxHp = this.heavy ? E.heavyHp : E.hp;
     this.dmgMul = this.heavy ? E.heavyDmgMul : 1;
-    this.aggr = rnd(0.9, 1.25) * (this.heavy ? 1.1 : 1);              // how fast it recovers between attacks
     this.style = WALK_STYLE[id] || WALK_STYLE.cream;
+    this.aggr = rnd(0.9, 1.25) * (this.heavy ? 1.1 : 1) * (this.style.aggr || 1);   // how fast it recovers between attacks
     this.speed = E.walkSpeed * rnd(0.95, 1.2) * (this.heavy ? 1.05 : 1) * this.style.speed;
     this.stepLen = this.style.step * (character.manifest.gameHeight || 140);      // px covered by one step (one pass through the walk loop)
     this.vw = 0; this.vh = 0; this.turnT = 0; this.stride = 0; this.leanK = 0;                      // smoothed velocity, turn timer, walk phase 0..1 per step
-    this.atkRate = this.heavy ? 1.12 : 1.1;                           // their swings are quicker than the raw animation
+    this.atkRate = (this.heavy ? 1.12 : 1.1) * (this.style.atk || 1);                           // their swings are quicker than the raw animation
     this.evadeChance = this.heavy ? 0.12 : 0.4;
     this.prefersRange = !this.canGrab && Math.random() < 0.45;       // some enemies keep their distance and throw headsets
     this.side = sgn(x - 320);                                         // which side of Zee it likes to fight from
     this.flash = 0; this.barT = 0; this.spawnT = 0.5; this.cool = rnd(0.5, 0.9);
     this.mx = 0; this.my = 0; this.decideT = 0; this.still = 0; this.sideT = 0; this.hitCool = 0; this.combo = 0; this.evadeId = -1; this.evadeT = 0;
+    this.tellT = 0; this.squash = 0; this.landed = true; this.stepAcc = 0;
     this.hitId = -1; this.holdingZee = false; this.struggle = 0; this.deadT = 0; this.remove = false;
     this.state = 'spawn'; this.attackName = 'punch';
     this._play('idle');
@@ -69,7 +71,7 @@ export class Enemy {
   // returns false if ignored, 'kill' if it killed, true otherwise
   takeHit(dmg, dir, knock) {
     if (!this.canBeHit()) return false;
-    this.hp -= dmg; this.flash = 0.22; this.barT = 2.6;
+    this.hp -= dmg; this.flash = 0.22; this.barT = 2.6; this.squash = 1; this.landed = false;
     if (this.hp <= 0) { this.hp = 0; this.state = 'dead'; this._play('defeat'); this.vx = dir * 100; this.deadT = 0; return 'kill'; }
     if (knock) { this.state = 'down'; this._play('knockdown'); this.vx = dir * 120; this.hitCool = 0; return true; }
     // committed swings (past the wind-up) can't be flinched by a light hit, and nobody can be stun-locked forever
@@ -80,9 +82,12 @@ export class Enemy {
   }
 
   update(dt, g) {
-    const rate = this.state === 'attack' ? this.atkRate : 1;
+    const rate = this.state === 'attack' ? this.atkRate : this.animName === 'idle' ? (this.style.idle || 1) : 1;
     if (this.state !== 'whiff' && this.animName !== 'walk') this.t += dt * rate;   // the walk loop is advanced by distance walked (see _stride)
     this.flash = Math.max(0, this.flash - dt);
+    this.tellT = Math.max(0, this.tellT - dt); this.squash = Math.max(0, this.squash - dt * 6);
+    // body hits the floor (knockdown / KO): dust cloud once
+    if ((this.state === 'down' || this.state === 'dead') && !this.landed && (this.animName === 'knockdown' || this.animName === 'defeat') && this.frame >= this.anim.frames - 3) { this.landed = true; g.floorDust(this.x, this.y, this.heavy ? 1.4 : 1.1); }
     const tl = (this.state === 'walk' || this.state === 'evade') ? Math.min(1, Math.hypot(this.vw, this.vh) / Math.max(1, this.speed)) : 0;
     this.leanK += (tl - this.leanK) * Math.min(1, dt * 9);        // eases the style in and out as it starts and stops walking
     this.barT = Math.max(0, this.barT - dt);
@@ -229,6 +234,7 @@ export class Enemy {
       if (this.state !== 'walk') { this.state = 'walk'; this._play('walk'); this.t = this.stride * this.anim.duration; }
       const d = Math.hypot(this.x - px, this.y - py);
       this._stride(d * (Math.abs(this.vw) < 14 || sgn(this.vw) === this.face ? 1 : -1));      // backwards only while turning round
+      this.stepAcc += d; if (this.stepAcc > this.stepLen * 0.5) { this.stepAcc = 0; g.footDust(this.x - this.face * 6, this.y, 0.6); }
     } else {
       this.still += dt;
       if (this.state === 'walk' && this.still > 0.15) { this.state = 'idle'; this._play('idle'); }
@@ -246,11 +252,11 @@ export class Enemy {
     if (inRange && atHerBack) this.cool = Math.min(this.cool, 0.05);
     if (inRange && (g.attackerCount() < g.maxAttackers || atHerBack)) {
       this._faceZee(z); this.turnT = 0;
-      if (this.canGrab && Math.random() < E.grabChance && z.canBeGrabbed()) { this.state = 'grab'; this._play('grab'); g.sfx.grab(); return; }
+      if (this.canGrab && Math.random() < E.grabChance && z.canBeGrabbed()) { this.state = 'grab'; this._play('grab'); this.tellT = 0.35; this.tellCol = '#ff5a4a'; g.sfx.grab(); return; }
       this.combo = this.combo > 0 ? this.combo : (Math.random() < 0.6 ? Math.floor(rnd(1, 3.4)) : 0);   // 0-2 follow-up hits
       this._startMelee(g);
     } else if (!this.canGrab && adx > 130 && adx < 460 && ady < 9 && Math.random() < (this.prefersRange ? 0.05 : 0.015)) {   // a headset on the way in
-      this.state = 'ranged'; this.fired = false; this._play('throw_headset'); this._faceZee(z);
+      this.state = 'ranged'; this.fired = false; this._play('throw_headset'); this._faceZee(z); this.tellT = 0.3; this.tellCol = '#ffe08a';
     }
   }
 
@@ -258,6 +264,7 @@ export class Enemy {
     this.attackName = this.combo % 2 === 0 ? 'punch' : 'kick';
     if (Math.random() < 0.2) this.attackName = this.attackName === 'punch' ? 'kick' : 'punch';
     this.state = 'attack'; this.hitDone = false; this._play(this.attackName);
+    this.tellT = 0.28; this.tellCol = this.heavy ? '#ffb07a' : '#fff4c8';                    // wind-up tell: a glint by the head
   }
 
   _evade(dt, g) {
@@ -365,6 +372,14 @@ export class Enemy {
       drawAnim(ctx, ch, this.anim, this.frame, x, y - lift, this.face, fade, this.flash * 6);
       ctx.restore();
     } else drawAnim(ctx, ch, this.anim, this.frame, x, y, this.face, fade, this.flash * 6);
+    if (this.tellT > 0 && this.state !== 'dead') {              // wind-up tell: a quick glint + "!" by the head before a swing / grab / throw
+      const k = this.tellT / 0.3, hx = x + this.face * 10, hy = y - ch.manifest.gameHeight * 0.92, r = 3 + 6 * Math.sin(Math.min(1, 1 - k) * Math.PI);
+      ctx.save(); ctx.globalAlpha = Math.min(1, k * 2.5); ctx.strokeStyle = this.tellCol || '#fff4c8'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(hx - r, hy); ctx.lineTo(hx + r, hy); ctx.moveTo(hx, hy - r); ctx.lineTo(hx, hy + r); ctx.stroke();
+      ctx.font = 'bold 10px ui-monospace, Consolas, monospace'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#10101a';
+      ctx.strokeText('!', hx + this.face * 9, hy - 2); ctx.fillStyle = this.tellCol || '#fff4c8'; ctx.fillText('!', hx + this.face * 9, hy - 2);
+      ctx.restore();
+    }
     // health bar with the HP number beside it, for a moment after being hit
     if (this.barT > 0 && this.state !== 'dead') {
       const bw = this.heavy ? 44 : 34, bx = Math.round(x - bw / 2 - 6), by = Math.round(y - (lying ? 34 : ch.manifest.gameHeight + 12));   // lying down: bar sits just above the body
