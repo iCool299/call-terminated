@@ -1,4 +1,4 @@
-// All balance numbers and key bindings live here so they are easy to tune.
+﻿// All balance numbers and key bindings live here so they are easy to tune.
 export const CONFIG = {
   view: { w: 640, h: 360 },            // internal resolution, scaled to fit any screen (keeps pixels crisp)
   floor: { top: 226, bottom: 338 },    // walkable band (y of Zee's feet)
@@ -37,7 +37,7 @@ export const CONFIG = {
 
   enemy: {
     hp: 100,                           // every enemy
-    heavyHp: 200,                      // the two heavies (navy + sporty)
+    heavyHp: 140,                      // the two heavies (navy + sporty)
     heavyDmgMul: 1.4,                  // heavies hit 40% harder
     hitCool: 0.5,                      // after a flinch, light hits can't flinch them again for this long (no stun-lock)
     maxAttackers: 2,                   // at most this many attack at once (the rest circle and flank); 3 when the room is crowded
