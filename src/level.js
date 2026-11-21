@@ -20,8 +20,8 @@
 //   light: { rim, rimAlpha, rimPx, lightX, lightY, wash, washAlpha, feet } = how Zee and the enemies are lit in this room
 //   (rim / wash are [r,g,b]); the game eases from one room's light to the next (see setLight in assets.js).
 //   doorRight is the door to the NEXT room: while it is locked the player cannot pass it; no door (or unlocked) = open.
-import { CONFIG } from './config.js?v=202611220053';
-import { VERSION } from './assets.js?v=202611220053';
+import { CONFIG } from './config.js?v=202611220059';
+import { VERSION } from './assets.js?v=202611220059';
 
 const C = CONFIG.camera, F = CONFIG.floor;
 export const LAYER_H = 507;                       // layer height in pixels (the view shows 506.25)
@@ -203,17 +203,21 @@ export function tempRoom(id, name, width) {
 }
 
 // R01 Quality Department: final art, a single 2000 x 667 px image (assets/levels/r01_quality_department.webp).
-// It is placed at 0.9 world units per image pixel, so it is exactly 1800 units wide. y puts the image's bottom edge on the
-// bottom of the view (Y 506.25), which puts its floor / wall line (image y ~476) at about Y 334, the top of the feet band.
-// The image has the window view, furniture and the door painted in, so for now it is one layer (no parallax in the windows).
-const R01_SCALE = 0.9, R01_H = 667;
+// SCALE: 0.78 world units per image pixel, so furniture is at real size next to Zee (132 units = 169 image px): desk ~ 60 units,
+// chair back ~ 78, filing cabinet ~ 100. The room is 2000 * 0.78 = 1560 units wide. y puts the image's bottom edge on the bottom of
+// the view (Y 506.25), which crops the top ~18 px (the very top of the ceiling) and puts the wall / floor line (image y ~484)
+// at Y ~364 and the furniture feet (image y ~491) at Y ~369, which is where CONFIG.floor.top (366) comes from.
+// The window view, furniture and the door are painted into this one image, so for now it is one layer (no parallax in the windows).
+// THE DOOR (painted in): frame x 1815-1938, y 204-496 in the image = world x 1416-1512 (96 wide), Y 145-373 (228 tall, 1.7x Zee).
+const R01_SCALE = 0.78, R01_W = 2000, R01_H = 667;
 export function qualityDepartment() {
   return {
-    id: 'R01', name: 'Quality Department', width: 1800, doorRight: { locked: true },
+    id: 'R01', name: 'Quality Department', width: Math.round(R01_W * R01_SCALE), doorRight: { locked: true },
     art: { arch: { src: 'assets/levels/r01_quality_department.webp', scale: R01_SCALE, y: C.viewH - R01_H * R01_SCALE, smooth: true } },
-    // LIGHT (read from the art): a bright, cool white-blue room (floor ~ rgb 142,176,222, walls ~ 148,176,218). Sunlight comes through
-    // the tall windows on the LEFT (top-left, matching how the sprites are shaded), so the rim light is a soft warm white against a
-    // cool blue ambient. The floor is bright and glossy, so legs are shaded less than usual.
-    light: { rim: [255, 242, 208], rimAlpha: 0.6, rimPx: 4, lightX: -1, lightY: -0.5, wash: [96, 150, 235], washAlpha: 0.13, feet: 0.22 },
+    // LIGHT (read from the art): a bright, cool white-blue room (floor ~ rgb 131,165,210, walls ~ 136,173,218, sky ~ 96,173,234).
+    // Sunlight comes through the tall windows on the LEFT (top-left, matching how the sprites are shaded; the bright sun patches are on
+    // the left of the floor), so the rim light is a soft warm white against a cool blue ambient. The floor is bright and glossy, so legs
+    // are shaded less than usual.
+    light: { rim: [255, 242, 208], rimAlpha: 0.6, rimPx: 4, lightX: -1, lightY: -0.5, wash: [92, 148, 232], washAlpha: 0.13, feet: 0.22 },
   };
 }

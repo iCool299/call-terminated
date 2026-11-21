@@ -4,8 +4,8 @@ export const CONFIG = {
   // CAMERA: the world is drawn through a zoomed-out camera. zoom = view.w / viewW (about 0.71), so 900 x 506 world units are visible
   // and rendered into the 640 x 360 screen. Characters keep their world size (Zee is ~132 units tall): the camera makes them smaller.
   camera: { viewW: 900, lookAhead: 56, follow: 6 },
-  // WORLD (506 units tall): Y 0-205 upper architecture, Y 205-325 furniture / doors / wall details, Y 325-485 the floor band.
-  floor: { top: 325, bottom: 485 },    // walkable band: the y of the characters' FEET, in world units
+  // WORLD (506 units tall): the wall meets the floor at Y 366 (72% down), the feet band is Y 366-485, the floor runs on to Y 506.
+  floor: { top: 366, bottom: 485 },    // walkable band: the y of the characters' FEET, in world units. top = where the wall meets the floor in the room art (same line in EVERY room); the view is 506 tall
 
   zee: {
     maxHp: 100,
