@@ -1,4 +1,4 @@
-# Builds one enemy's game-ready strips + manifest from its raw ChatGPT sheets, with the same finishing pipeline as Zee
+﻿# Builds one enemy's game-ready strips + manifest from its raw ChatGPT sheets, with the same finishing pipeline as Zee
 # (edge-preserving smoothing, palette locked to the enemy's master, texture stabiliser, temporal consensus).
 # Usage: powershell -ExecutionPolicy Bypass -File tools\build-enemy.ps1 -Id navy
 param([Parameter(Mandatory)][string]$Id)
@@ -36,7 +36,7 @@ $masterPath = Join-Path $root $e.master; $palN = 32
 if ($e.grab) {
     # grabbers' sheet also contains Zee, so the palette must hold her colours too: build a side-by-side master (enemy + Zee)
     Add-Type -AssemblyName System.Drawing
-    $a = [Drawing.Bitmap]::FromFile($masterPath); $z = [Drawing.Bitmap]::FromFile((Join-Path $root 'sprites\zee\master\zee_master_idle_v1.png'))
+    $a = [Drawing.Bitmap]::FromFile($masterPath); $z = [Drawing.Bitmap]::FromFile((Join-Path $root 'sprites\zee\master\zee_master_idle_v2.png'))
     $both = New-Object Drawing.Bitmap ($a.Width + $z.Width), ([Math]::Max($a.Height, $z.Height))
     $g = [Drawing.Graphics]::FromImage($both); $g.Clear([Drawing.Color]::FromArgb(0, 255, 0)); $g.DrawImage($a, 0, 0, $a.Width, $a.Height); $g.DrawImage($z, $a.Width, 0, $z.Width, $z.Height); $g.Dispose()
     $masterPath = Join-Path $root "tools\debug\palette-master-$Id.png"; $both.Save($masterPath); $a.Dispose(); $z.Dispose(); $both.Dispose(); $palN = 46
@@ -68,3 +68,4 @@ if ($have -contains 'w') { & (Join-Path $PSScriptRoot 'order-walk.ps1') -Id $Id 
 # head lock: one clean head pasted on every walk / idle frame (stops the face redrawing slightly differently each frame)
 foreach ($an in 'walk', 'idle') { & (Join-Path $PSScriptRoot 'lock-head.ps1') -Id $Id -Anim $an | Out-Null }            # smoothest walk loop (always run after a build)
 Write-Host "built $Id :$($sheets.Count) strips, $($anims.Count) animations (cell ${cw}x${ch}) -> $out"
+

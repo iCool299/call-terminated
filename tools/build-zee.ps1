@@ -16,7 +16,7 @@ function Cfg($name, $file, $n, $rows, $standH) {
 
 # Extra palette colors for props that are not on the master (compact mirror, lipstick, red pen, scorecard stars).
 $extras = @()    # the master's own palette only: extra pink/red/gold entries attracted stray speckle pixels onto the pants
-$master = Join-Path $root 'sprites\zee\master\zee_master_idle_v1.png'
+$master = Join-Path $root 'sprites\zee\master\zee_master_idle_v2.png'
 $outName = 'zee' + ($Suffix -replace '-', '_')
 $out = Join-Path $root "assets\characters\$outName"
 $dbg = Join-Path $root 'tools\debug'
