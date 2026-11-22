@@ -1,14 +1,14 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI.
-import { CONFIG } from './config.js?v=202611220234';
-import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220234';
-import { Input } from './input.js?v=202611220234';
-import { Zee } from './zee.js?v=202611220234';
-import { Game } from './game.js?v=202611220234';
-import { ENEMY_IDS } from './enemy.js?v=202611220234';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611220234';
-import { Level, qualityDepartment } from './level.js?v=202611220234';
-import { Camera } from './camera.js?v=202611220234';
-import { unlock } from './sfx.js?v=202611220234';
+import { CONFIG } from './config.js?v=202611220239';
+import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220239';
+import { Input } from './input.js?v=202611220239';
+import { Zee } from './zee.js?v=202611220239';
+import { Game } from './game.js?v=202611220239';
+import { ENEMY_IDS } from './enemy.js?v=202611220239';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611220239';
+import { Level, qualityDepartment } from './level.js?v=202611220239';
+import { Camera } from './camera.js?v=202611220239';
+import { unlock } from './sfx.js?v=202611220239';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -126,6 +126,24 @@ const level = new Level([qualityDepartment()]);           // Level 1 starts in t
 const camera = new Camera();
 const bounds = { minX: 40, maxX: level.width - 40, minY: CONFIG.floor.top, maxY: CONFIG.floor.bottom };   // updated every frame from the level (locked doors are walls)
 const STEP = CONFIG.simStep;
+// BLOOM: the bright parts of the finished picture (windows, lights, sun shafts) glow softly. The frame is shrunk to 1/4, only its brightest
+// parts are kept (brightness / contrast filter), blurred by shrinking again, then added back over the picture. Skipped where the browser has
+// no canvas filter support.
+const bloomA = document.createElement('canvas'), bloomB = document.createElement('canvas');
+const bloomOk = 'filter' in bloomA.getContext('2d');
+function bloomPass() {
+  if (!bloomOk) return;
+  const W = canvas.width, H = canvas.height, aw = Math.max(1, W >> 2), ah = Math.max(1, H >> 2), bw = Math.max(1, W >> 4), bh = Math.max(1, H >> 4);
+  if (bloomA.width !== aw || bloomA.height !== ah) { bloomA.width = aw; bloomA.height = ah; bloomB.width = bw; bloomB.height = bh; }
+  const a = bloomA.getContext('2d'), b = bloomB.getContext('2d');
+  a.setTransform(1, 0, 0, 1, 0, 0); a.clearRect(0, 0, aw, ah); a.imageSmoothingQuality = 'high'; a.filter = 'brightness(0.6) grayscale(1) contrast(10)';
+  a.drawImage(canvas, 0, 0, aw, ah); a.filter = 'none';
+  b.setTransform(1, 0, 0, 1, 0, 0); b.clearRect(0, 0, bw, bh); b.imageSmoothingQuality = 'high'; b.drawImage(bloomA, 0, 0, bw, bh);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.34; ctx.drawImage(bloomB, 0, 0, W, H);                      // wide glow
+  ctx.globalAlpha = 0.16; ctx.drawImage(bloomA, 0, 0, W, H);                      // tight glow
+  ctx.restore();
+}
 let acc = 0, readoutText = '', showSolids = false;
 let fxOn = true, blurLen = 0, prevGx = 0;                       // finishing effects: sunlight shafts, depth of field, motion blur
 addEventListener('keydown', (e) => {
@@ -172,6 +190,7 @@ function frame(now) {
     }
     ctx.restore();
   }
+  if (level.fx.bloom) bloomPass();
   // SCREEN transform: the HUD stays in screen space, so its size never changes with the camera
   ctx.setTransform(k, 0, 0, k, 0, 0);
   drawHud(); game.drawHud(ctx); updateButtons();

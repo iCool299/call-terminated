@@ -1,6 +1,6 @@
 // Loads a character's manifest + strips and turns them into ready-to-play animation objects.
 // To swap art, replace the PNG strips / manifest in assets/characters/<name>/ - no code changes needed.
-import { CONFIG } from './config.js?v=202611220234';
+import { CONFIG } from './config.js?v=202611220239';
 
 // Release stamp, taken from this module's own URL (?v=...): every release uses new URLs so browsers never serve stale files.
 export const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -79,6 +79,31 @@ export function silhouette(character, anim, frame) {
   c.fillStyle = '#000'; c.fillRect(0, 0, w, h);
   character.silhouettes.set(key, s);
   return s;
+}
+
+// THE character shadow (Zee and every enemy use this one function, so there is exactly one shadow per character, built from three layers):
+//   1. a wide, very soft pool of cool blue-black under the body (ambient occlusion),
+//   2. a small darker contact core right under the feet,
+//   3. a cast shadow from the character's own silhouette, falling away from the window light (LOOK.lightX) and drawn in three slightly
+//      wider, fainter passes so its edge is soft (a penumbra) instead of a hard cut-out.
+// Everything shrinks and fades as the character rises (jumps), the way a real shadow does.  lying = a long body on the floor.
+const POOL = (() => {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(10,16,44,0.9)'); r.addColorStop(0.5, 'rgba(10,16,44,0.4)'); r.addColorStop(1, 'rgba(10,16,44,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64); return c;
+})();
+export function drawShadow(ctx, character, anim, frame, x, y, lift, face, lying, strength = 1) {
+  const fade = Math.max(0.25, 1 - lift / 170) * strength, w = (lying ? 46 : 27) * (1 - Math.min(0.4, lift / 300));
+  ctx.save();
+  ctx.globalAlpha = 0.7 * fade; ctx.drawImage(POOL, x - w * 1.15, y - w * 0.3, w * 2.3, w * 0.6);              // 1. pool
+  ctx.globalAlpha = 0.6 * fade; ctx.drawImage(POOL, x - w * 0.5, y - w * 0.1, w, w * 0.2);                     // 2. contact core
+  const sil = silhouette(character, anim, frame), dw = character.cw * character.scale, dh = character.ch * character.scale;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  for (const [sk, wd, a] of [[1, 1, 0.2], [1.14, 1.07, 0.13], [1.3, 1.15, 0.08]]) {                            // 3. cast shadow, soft edge
+    ctx.save(); ctx.translate(x, y); ctx.transform(1, 0, 0.5 * LOOK.lightX * sk, 0.3, 0, 0); ctx.scale(face * wd, 1);
+    ctx.globalAlpha = a * fade; ctx.drawImage(sil, -character.anchor.x * character.scale, -character.anchor.y * character.scale, dw, dh); ctx.restore();
+  }
+  ctx.restore();
 }
 
 // Which frame (0-based inside the animation) is showing at time t.
@@ -209,3 +234,4 @@ function drawLit(ctx, character, anim, frame, x, y, face, alpha, tint, glow = 0)
   if (glow > 0.01) { ctx.globalAlpha = alpha * glow; ctx.drawImage(tinted(character, anim, frame, true), 0, 0, cw, ch, -anchor.x * scale, -anchor.y * scale, cw * scale, ch * scale); }   // soft white glow (invulnerable)
   ctx.restore();
 }
+

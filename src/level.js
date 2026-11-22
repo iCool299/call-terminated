@@ -20,8 +20,8 @@
 //   light: { rim, rimAlpha, rimPx, lightX, lightY, wash, washAlpha, feet } = how Zee and the enemies are lit in this room
 //   (rim / wash are [r,g,b]); the game eases from one room's light to the next (see setLight in assets.js).
 //   doorRight is the door to the NEXT room: while it is locked the player cannot pass it; no door (or unlocked) = open.
-import { CONFIG } from './config.js?v=202611220234';
-import { VERSION } from './assets.js?v=202611220234';
+import { CONFIG } from './config.js?v=202611220239';
+import { VERSION } from './assets.js?v=202611220239';
 
 const C = CONFIG.camera, F = CONFIG.floor;
 export const LAYER_H = 507;                       // layer height in pixels (the view shows 506.25)
@@ -36,7 +36,7 @@ const TRACKS = [
 export class Level {
   constructor(rooms = []) {
     this.rooms = []; this.width = 0; this._pending = [];
-    this.fx = { dof: true, rays: true, refl: true, ao: true, ambient: true, flare: true };      // finishing effects (key N turns them all off to compare)
+    this.fx = { dof: true, rays: true, refl: true, ao: true, ambient: true, flare: true, bloom: true };      // finishing effects (key N turns them all off to compare)
     this.tracks = TRACKS.map((t) => ({ ...t, canvas: null, res: 1, smooth: false }));
     for (const r of rooms) this.addRoom(r, false);
     this.build();
@@ -226,6 +226,10 @@ export class Level {
           const g = ctx.createRadialGradient(0, 0, rx * 0.25, 0, 0, rx);
           g.addColorStop(0, 'rgba(14,26,70,0.42)'); g.addColorStop(0.7, 'rgba(14,26,70,0.2)'); g.addColorStop(1, 'rgba(14,26,70,0)');
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 6.2832); ctx.fill(); ctx.restore();
+          // the cast shadow: the window light comes from the left, so each object throws a soft shadow along the floor to its right (taller = longer)
+          const len = Math.min(o.h === Infinity ? 90 : o.h, 90) * 0.7, ex = x0 + o.x1;
+          const sg = ctx.createLinearGradient(ex - 6, 0, ex + len, 0); sg.addColorStop(0, 'rgba(14,26,70,0.2)'); sg.addColorStop(1, 'rgba(14,26,70,0)');
+          ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(ex - 6, base - 5); ctx.lineTo(ex + len * 0.8, base - 1); ctx.lineTo(ex + len, base + 9); ctx.lineTo(ex - 6, base + 8); ctx.closePath(); ctx.fill();
         }
         ctx.restore();
       }

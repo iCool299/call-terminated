@@ -1,9 +1,8 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611220234';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220234';
-import { SOFT } from './zee.js?v=202611220234';
+import { CONFIG } from './config.js?v=202611220239';
+import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611220239';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -337,15 +336,7 @@ export class Enemy {
     if (this.state === 'spawn') fade = 1 - this.spawnT / 0.5;
     if (this.state === 'dead' && this.deadT > E.corpseTime - 0.6) fade = Math.max(0, (E.corpseTime - this.deadT) / 0.6);
     const ch = this.character, lying = this.state === 'down' || this.state === 'dead' || this.animName === 'get_up';
-    // shadow (soft contact + cast silhouette)
-    const w = lying ? 44 : 26;
-    ctx.globalAlpha = 0.5 * fade; ctx.drawImage(SOFT, x - w, y - w * 0.26 + 1, w * 2, w * 0.52);
-    if (LOOK.on) ctx.drawImage(SOFT, x - w * 0.5, y - w * 0.08, w, w * 0.18);      // contact shadow: darker right under the feet
-    const dw = ch.cw * ch.scale, dh = ch.ch * ch.scale;
-    ctx.save(); ctx.translate(x, y); ctx.transform(1, 0, -0.5, 0.3, 0, 0); ctx.scale(this.face, 1);
-    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.globalAlpha = 0.2 * fade;
-    ctx.drawImage(silhouette(ch, this.anim, this.frame), -ch.anchor.x * ch.scale, -ch.anchor.y * ch.scale, dw, dh);
-    ctx.restore(); ctx.globalAlpha = 1;
+    drawShadow(ctx, ch, this.anim, this.frame, x, y, 0, this.face, lying, fade);          // the one shared character shadow
     if (this.leanK > 0.01 && !lying) {                          // each enemy's walking style: forward lean, body roll and mid-step lift
       const S = this.style, k = this.leanK, roll = S.sway * Math.sin(this.stride * 2 * Math.PI) * k;
       const lift = S.bounce * Math.abs(Math.sin(this.stride * Math.PI)) * k;
@@ -374,4 +365,7 @@ export class Enemy {
     }
   }
 }
+
+
+
 

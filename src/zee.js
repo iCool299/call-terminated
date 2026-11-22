@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611220234';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220234';
+import { CONFIG } from './config.js?v=202611220239';
+import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611220239';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -375,22 +375,8 @@ export class Zee {
     this._drawPapers(ctx);
   }
 
-  // Soft contact shadow + a cast shadow built from her own silhouette (so it follows every pose), both fading as she rises.
   _drawShadow(ctx, x, y, lift) {
-    const fade = Math.max(0.3, 1 - lift / 170);
-    const lying = this.state === 'down' || this.state === 'getup' || this.state === 'defeat';
-    const w = (lying ? 46 : 27) * (1 - Math.min(0.4, lift / 300));
-    ctx.globalAlpha = 0.55 * fade;
-    ctx.drawImage(SOFT, x - w, y - w * 0.26 + 1, w * 2, w * 0.52);
-    if (LOOK.on) ctx.drawImage(SOFT, x - w * 0.5, y - w * 0.08, w, w * 0.18);      // contact shadow: darker right under the feet
-    const ch = this.character, dw = ch.cw * ch.scale, dh = ch.ch * ch.scale;
-    ctx.save();
-    ctx.translate(x, y); ctx.transform(1, 0, -0.5, 0.3, 0, 0); ctx.scale(this.face, 1);
-    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    ctx.globalAlpha = 0.22 * fade;
-    ctx.drawImage(silhouette(ch, this.anim, this.frame), -ch.anchor.x * ch.scale, -ch.anchor.y * ch.scale, dw, dh);
-    ctx.restore();
-    ctx.globalAlpha = 1;
+    drawShadow(ctx, this.character, this.anim, this.frame, x, y, lift, this.face, this.state === 'down' || this.state === 'getup' || this.state === 'defeat');
   }
 
   _drawPapers(ctx) {
@@ -415,4 +401,6 @@ export class Zee {
     ctx.globalAlpha = 1;
   }
 }
+
+
 
