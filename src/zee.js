@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611220239';
-import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611220239';
+import { CONFIG } from './config.js?v=202611220246';
+import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611220246';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -230,7 +230,7 @@ export class Zee {
       if (this.state === 'walk' || this.state === 'run') { this.state = 'idle'; this._play('idle'); }
       if (this.state === 'idle') {
         this.idleTime += dt;
-        if (this.idleTime > C.makeupIdleDelay) { this.state = 'makeup'; this._play('idle_makeup'); }
+        if (this.idleTime > C.makeupIdleDelay && this.frame === 0) {      // start the makeup at the top of the idle loop (no pop mid-sway) this.state = 'makeup'; this._play('idle_makeup'); }
       } else if (this.state === 'makeup' && this.done) {
         this.state = 'idle'; this.idleTime = 0; this._play('idle');
       }

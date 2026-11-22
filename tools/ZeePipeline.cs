@@ -1,4 +1,4 @@
-// Zee sprite pipeline v2: processes ChatGPT-generated green-screen animation sheets (grid layouts)
+﻿// Zee sprite pipeline v2: processes ChatGPT-generated green-screen animation sheets (grid layouts)
 // into game-ready strips with one baseline, one scale rule and ONE palette locked to the master sprite.
 // Compiled via Add-Type (C# 5 compatible).
 using System;
@@ -20,6 +20,8 @@ namespace Zee2
         public int DropFrames;     // number of trailing frames to ignore (unused)
         public bool FeetAnchor;    // anchor each frame on its lowest 7% (the feet) instead of the lower body: for frames holding a second, lifted character
         public double[] Anchors;   // optional per-frame source x anchors (NaN = automatic)
+        public double[] FrameMul;  // optional per-frame size multiplier (1.2 = this frame was drawn 20% too big, so it is shrunk by 1.2)
+        public double ShiftX;      // whole-sheet horizontal shift of the output, in output px (+ = right)
     }
 
     public class SheetOut
@@ -204,7 +206,8 @@ namespace Zee2
             SheetOut o = new SheetOut(); o.Cfg = c; o.UsedScale = scale; o.Frames = new int[n][];
             for (int k = 0; k < n; k++)
             {
-                o.Frames[k] = Resample(s, frameOf, k, legCx[k], rowBase[k / perRow], scale);
+                double fm = (c.FrameMul != null && k < c.FrameMul.Length && c.FrameMul[k] > 0) ? c.FrameMul[k] : 1.0;
+                o.Frames[k] = Resample(s, frameOf, k, legCx[k] - c.ShiftX / (scale / fm), rowBase[k / perRow], scale / fm);
                 int dMinX = CW, dMaxX = -1, dMinY = CH;
                 for (int y = 0; y < CH; y++) for (int x = 0; x < CW; x++)
                         if ((o.Frames[k][y * CW + x] >> 24) != 0) { if (x < dMinX) dMinX = x; if (x > dMaxX) dMaxX = x; if (y < dMinY) dMinY = y; }
@@ -471,3 +474,4 @@ namespace Zee2
         }
     }
 }
+
