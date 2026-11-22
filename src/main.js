@@ -1,14 +1,14 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611220206';
-import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220206';
-import { Input } from './input.js?v=202611220206';
-import { Zee } from './zee.js?v=202611220206';
-import { Game } from './game.js?v=202611220206';
-import { ENEMY_IDS } from './enemy.js?v=202611220206';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611220206';
-import { Level, qualityDepartment } from './level.js?v=202611220206';
-import { Camera } from './camera.js?v=202611220206';
-import { unlock } from './sfx.js?v=202611220206';
+import { CONFIG } from './config.js?v=202611220212';
+import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220212';
+import { Input } from './input.js?v=202611220212';
+import { Zee } from './zee.js?v=202611220212';
+import { Game } from './game.js?v=202611220212';
+import { ENEMY_IDS } from './enemy.js?v=202611220212';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611220212';
+import { Level, qualityDepartment } from './level.js?v=202611220212';
+import { Camera } from './camera.js?v=202611220212';
+import { unlock } from './sfx.js?v=202611220212';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -182,7 +182,8 @@ const level = new Level([qualityDepartment()]);           // Level 1 starts in t
 const camera = new Camera();
 const bounds = { minX: 40, maxX: level.width - 40, minY: CONFIG.floor.top, maxY: CONFIG.floor.bottom };   // updated every frame from the level (locked doors are walls)
 const STEP = CONFIG.simStep;
-let acc = 0, readoutText = '';
+let acc = 0, readoutText = '', showSolids = false;
+addEventListener('keydown', (e) => { if (e.key === 'b' || e.key === 'B') showSolids = !showSolids; });
 function frame(now) {
   let dt = (now - last) / 1000; last = now;
   if (dt > 0.1) dt = 0.1;                       // tab was throttled: don't fast-forward
@@ -206,6 +207,15 @@ function frame(now) {
   level.drawBack(ctx, camera.gx);
   game.draw(ctx, a);
   level.drawFront(ctx, camera.gx);
+  if (showSolids) {                                                              // B: draw the solid-object boxes (top edge = back, bottom = front)
+    ctx.save(); ctx.font = '9px sans-serif';
+    for (const o of level.obstacles()) {
+      ctx.fillStyle = o.h === Infinity ? 'rgba(255,40,40,0.35)' : 'rgba(255,200,0,0.35)'; ctx.fillRect(o.x0, o.y0, o.x1 - o.x0, o.y1 - o.y0);
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(o.x0, o.y0, o.x1 - o.x0, o.y1 - o.y0);
+      ctx.fillStyle = '#fff'; ctx.fillText(`${o.name} h${o.h === Infinity ? '∞' : o.h}`, o.x0 + 3, o.y1 - 3);
+    }
+    ctx.restore();
+  }
   // SCREEN transform: the HUD stays in screen space, so its size never changes with the camera
   ctx.setTransform(k, 0, 0, k, 0, 0);
   drawHud(); game.drawHud(ctx); updateButtons();

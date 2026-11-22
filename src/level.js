@@ -20,8 +20,8 @@
 //   light: { rim, rimAlpha, rimPx, lightX, lightY, wash, washAlpha, feet } = how Zee and the enemies are lit in this room
 //   (rim / wash are [r,g,b]); the game eases from one room's light to the next (see setLight in assets.js).
 //   doorRight is the door to the NEXT room: while it is locked the player cannot pass it; no door (or unlocked) = open.
-import { CONFIG } from './config.js?v=202611220206';
-import { VERSION } from './assets.js?v=202611220206';
+import { CONFIG } from './config.js?v=202611220212';
+import { VERSION } from './assets.js?v=202611220212';
 
 const C = CONFIG.camera, F = CONFIG.floor;
 export const LAYER_H = 507;                       // layer height in pixels (the view shows 506.25)
@@ -57,6 +57,14 @@ export class Level {
     while (a > 0 && !(this.rooms[a - 1].doorRight && this.rooms[a - 1].doorRight.locked)) a--;
     while (b < this.rooms.length - 1 && !(this.rooms[b].doorRight && this.rooms[b].doorRight.locked)) b++;
     return { minX: this.rooms[a].x0 + WALL_MARGIN, maxX: this.rooms[b].x0 + this.rooms[b].width - WALL_MARGIN };
+  }
+
+  // every solid object of every room, in world units: { x0, x1, y0, y1, h }  (x0..x1 across, y0..y1 in depth on the floor band,
+  // h = how high it is: a character whose feet are higher than h (a jump) passes over it; Infinity = never)
+  obstacles() {
+    const out = [];
+    for (const r of this.rooms) for (const o of (r.obstacles || [])) out.push({ x0: r.x0 + o.x0, x1: r.x0 + o.x1, y0: o.y0 === undefined ? F.top - 20 : o.y0, y1: o.y1, h: o.h === undefined ? Infinity : o.h, name: o.name });
+    return out;
   }
 
   roomAt(x) { return this.rooms.find((r) => x >= r.x0 && x < r.x0 + r.width) || this.rooms[this.rooms.length - 1]; }
@@ -216,6 +224,19 @@ export function qualityDepartment() {
   return {
     id: 'R01', name: 'Quality Department', width: Math.round(R01_W * R01_SCALE), doorRight: { locked: true },
     art: { arch: { src: 'assets/levels/r01_quality_department.webp', scale: R01_SCALE, y: C.viewH - R01_H * R01_SCALE, smooth: true } },
+    // SOLID OBJECTS (room-local world units; measured from the art, press B in the game to see the boxes). Everything stands against the
+    // back wall, so each box covers the object's footprint plus a little depth (y1 = the front edge). h = height: Zee's full jump
+    // reaches ~115, so desks, chairs, pots and counters can be jumped over; the pillar, the printer and the tall cabinet cannot.
+    obstacles: [
+      { name: 'pillar',        x0: 168,  x1: 273,  y1: 392, h: Infinity },
+      { name: 'plant pot',     x0: 199,  x1: 242,  y1: 394, h: 45 },
+      { name: 'desk 1 + chair', x0: 328, x1: 534,  y1: 390, h: 55 },
+      { name: 'printer',       x0: 581,  x1: 647,  y1: 388, h: 80 },
+      { name: 'desk 2 + chair', x0: 686, x1: 897,  y1: 390, h: 55 },
+      { name: 'tall cabinet',  x0: 917,  x1: 983,  y1: 388, h: Infinity },
+      { name: 'low cabinet',   x0: 1002, x1: 1127, y1: 386, h: 50 },
+      { name: 'counter',       x0: 1197, x1: 1334, y1: 386, h: 55 },
+    ],
     // LIGHT (read from the art): a bright, cool white-blue room (floor ~ rgb 131,165,210, walls ~ 136,173,218, sky ~ 96,173,234).
     // Sunlight comes through the tall windows on the LEFT (top-left, matching how the sprites are shaded; the bright sun patches are on
     // the left of the floor), so the rim light is a soft warm white against a cool blue ambient. The floor is bright and glossy, so legs

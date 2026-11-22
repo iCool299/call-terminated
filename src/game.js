@@ -1,8 +1,8 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611220206';
-import { Enemy } from './enemy.js?v=202611220206';
-import { SOFT } from './zee.js?v=202611220206';
-import { sfx } from './sfx.js?v=202611220206';
+import { CONFIG } from './config.js?v=202611220212';
+import { Enemy } from './enemy.js?v=202611220212';
+import { SOFT } from './zee.js?v=202611220212';
+import { sfx } from './sfx.js?v=202611220212';
 
 const E = CONFIG.enemy;
 
@@ -142,6 +142,29 @@ export class Game {
     }
   }
 
+  // Solid level objects: nobody stands inside a desk, a cabinet, ... Characters slide along the edge (the push goes sideways or
+  // to the front, never into the wall) and stop dead against it (thrown / knocked-back enemies included). Feet above an
+  // object's height (a jump) pass over it.
+  _obstacles() {
+    if (!this.level || !this.level.obstacles) return;
+    const obs = this._obs || (this._obs = this.level.obstacles());
+    const MX = 14, MY = 3;
+    const fix = (c, lift) => {
+      for (const o of obs) {
+        if (lift >= o.h - 4) continue;
+        const x0 = o.x0 - MX, x1 = o.x1 + MX, y1 = o.y1 + MY;
+        if (c.x <= x0 || c.x >= x1 || c.y >= y1 || c.y <= o.y0) continue;
+        const pl = c.x - x0, pr = x1 - c.x, pf = y1 - c.y;
+        if (pf <= pl && pf <= pr) { c.y = y1; if (c.vy) c.vy = 0; }
+        else if (pl < pr) { c.x = x0; if (c.vx > 0) c.vx = 0; }
+        else { c.x = x1; if (c.vx < 0) c.vx = 0; }
+      }
+    };
+    const z = this.zee;
+    if (!['held', 'thrown'].includes(z.state)) fix(z, z.z);
+    for (const e of this.enemies) if (!['spawn', 'hold', 'throw', 'dead'].includes(e.state) && !e.holdingZee && !e.entering) fix(e, e.z || 0);
+  }
+
   // ---------- main step ----------
   update(dt, input) {
     if (this.hitstop > 0) { this.hitstop -= dt; return; }          // freeze for a beat on impact
@@ -165,6 +188,7 @@ export class Game {
     for (const e of this.enemies) e.update(dt, this);
     this._items(dt);
     this._separate(dt);
+    this._obstacles();
     this._zeeAttacks(); this._papers(); this._shots(dt);
     this.enemies = this.enemies.filter((e) => !e.remove);
     this.comboT -= dt; if (this.comboT <= 0) this.combo = 0;
