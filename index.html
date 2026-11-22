@@ -25,17 +25,6 @@
   button.ui { background:#14121ccc; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font:inherit; cursor:pointer; }
   button.ui:hover { border-color:var(--accent); }
   #btn-pause { top:calc(8px + env(safe-area-inset-top,0px)); right:calc(8px + var(--safe-r)); position:fixed; z-index:6; width:44px; height:44px; padding:0; font-size:18px; }
-  #btn-viewer { top:calc(8px + env(safe-area-inset-top,0px)); right:calc(60px + var(--safe-r)); position:fixed; z-index:6; height:44px; }
-
-  #btn-mode { position:fixed; left:calc(8px + var(--safe-l)); top:calc(62px + env(safe-area-inset-top,0px)); z-index:6; height:36px; font-size:12px; }
-  #testpanel { position:fixed; top:60px; right:calc(8px + var(--safe-r)); width:250px; max-height:calc(100% - 110px); overflow:auto; z-index:7; background:#14121cee; border:1px solid var(--line); border-radius:10px; padding:10px; display:none; touch-action:pan-y; }
-  body.testmode #testpanel { display:block; }
-  body.testmode #btn-spawn, body.testmode #btn-viewer, body.testmode #viewer { display:none !important; }
-  #testpanel h3 { margin:8px 0 5px; font-size:11px; color:var(--mute); text-transform:uppercase; letter-spacing:.06em; }
-  #testpanel h3:first-child { margin-top:0; }
-  #testpanel .chips { display:flex; flex-wrap:wrap; gap:4px; }
-  #testpanel .chips button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:4px 7px; font:11px ui-monospace,Consolas,monospace; cursor:pointer; }
-  #testpanel .chips button.on { background:var(--accent); color:#1a1209; border-color:var(--accent); }
   #btn-spawn { position:fixed; top:calc(8px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); z-index:6; height:44px; padding:0 18px; font-weight:700; background:#ff8a5c; color:#1a1209; border-color:#ff8a5c; }
   #btn-spawn:active { transform:translateX(-50%) scale(.96); }
 
@@ -64,13 +53,6 @@
   .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 22px; max-width:min(92vw,460px); }
   .card h2 { margin:0 0 8px; font-size:18px; } .card p { margin:4px 0; color:var(--mute); }
   .card button { margin-top:12px; }
-  #viewer { position:fixed; top:60px; right:calc(8px + var(--safe-r)); width:230px; max-height:calc(100% - 120px); overflow:auto; z-index:7; background:#14121cee; border:1px solid var(--line); border-radius:10px; padding:10px; display:none; touch-action:pan-y; }
-  #viewer.open { display:block; }
-  #viewer h3 { margin:0 0 6px; font-size:12px; color:var(--mute); text-transform:uppercase; letter-spacing:.06em; display:flex; justify-content:space-between; align-items:center; }
-  #anim-list { display:flex; flex-wrap:wrap; gap:5px; }
-  #anim-list button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:12px ui-monospace,Consolas,monospace; cursor:pointer; }
-  #anim-list button.on { background:var(--accent); color:#1a1209; border-color:var(--accent); }
-  .row { display:flex; gap:6px; margin-top:8px; }
   #loading { position:fixed; inset:0; z-index:20; display:grid; place-items:center; background:var(--bg); color:var(--mute); text-align:center; padding:20px; }
   #loading .lt { font:italic 900 clamp(26px,7vw,54px) "Arial Black","Segoe UI Black","Helvetica Neue",Arial,sans-serif; letter-spacing:.04em; color:#f4f6ff; text-shadow:0 3px 0 #ff8a1c, 0 0 18px rgba(255,138,28,.45); }
   #loading .ls { margin-top:12px; font:600 13px ui-monospace,Consolas,monospace; color:var(--mute); letter-spacing:.22em; text-transform:uppercase; animation:ctload 1s steps(2,start) infinite; }
@@ -85,24 +67,7 @@
 <div id="readout" class="chip">loading...</div>
 <div id="hints" class="chip">Move <b>WASD</b>/<b>Arrows</b> &middot; Run <b>Shift</b> &middot; Hit <b>J</b> (x3 combo) &middot; Dodge <b>L</b> &middot; Jump <b>I</b> &middot; Special <b>Space</b> &middot; Pause <b>Esc</b></div>
 <button id="btn-spawn" class="ui">+ Spawn enemy</button>
-<button id="btn-viewer" class="ui">Animations</button>
-<button id="btn-mode" class="ui">Mode: Battle &#8644;</button>
-<div id="testpanel">
-  <h3>Enemy</h3><div class="chips" id="t-target"></div>
-  <h3>Animation</h3><div class="chips" id="t-anims"></div>
-  <h3>Speed</h3><div class="chips" id="t-speed"></div>
-  <h3>Frames</h3>
-  <div class="chips"><button id="t-pause">Pause</button><button id="t-prev">&#9664; Step</button><button id="t-next">Step &#9654;</button><button id="t-flip">Flip</button><button id="t-reset">Reset</button></div>
-  <p style="color:var(--mute);font-size:11px;margin:8px 0 0">Nobody attacks in this mode. One-shot animations replay by themselves.</p>
-</div>
 <button id="btn-pause" class="ui" aria-label="Pause">&#10074;&#10074;</button>
-
-<div id="viewer">
-  <h3>Animation viewer <button id="viewer-close" class="ui" style="padding:2px 8px">x</button></h3>
-  <div id="anim-list"></div>
-  <div class="row"><button id="viewer-flip" class="ui">Flip</button><button id="viewer-exit" class="ui">Back to play</button></div>
-  <p style="color:var(--mute);font-size:11px;margin:8px 0 0">Dev keys: <b>1</b> hurt, <b>2</b> knockdown, <b>3</b> defeat, <b>4</b> victory, <b>E</b> interact, <b>R</b> revive</p>
-</div>
 
 <div id="touch">
   <div id="stick-zone"></div>
@@ -128,7 +93,8 @@
 <div id="rotate"><div><h2>Rotate your phone</h2><p style="color:var(--mute)">This game plays in landscape.</p></div></div>
 <div id="loading"><div><div class="lt">CALL TERMINATED</div><div class="ls">is loading...</div></div></div>
 
-<script type="module" src="src/main.js?v=202611220226"></script>
+<script type="module" src="src/main.js?v=202611220234"></script>
 </body>
 </html>
+
 

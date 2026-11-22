@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611220226';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220226';
+import { CONFIG } from './config.js?v=202611220234';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220234';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -38,7 +38,6 @@ export class Zee {
     this.idleTime = 0;
     this.queued = false;
     this.phase = '';
-    this.viewer = null;           // {name, loop} when the animation viewer is driving the sprite
     this.flash = 0;               // red hit-flash timer
     this.attackId = 0;            // changes with every swing so one swing hits each enemy once
     this.holder = null;           // the enemy holding her
@@ -133,7 +132,6 @@ export class Zee {
     this.flash = Math.max(0, this.flash - dt);
     const actions = input.consume();
     this._updatePapers(dt);
-    if (this.viewer) { this._viewer(); return; }
 
     for (const a of actions) this._dev(a);
 
@@ -174,12 +172,6 @@ export class Zee {
     if (this.smear) this.smear.t += dt;
   }
 
-  _viewer() {
-    const v = this.viewer;
-    if (this.animName !== v.name) this._play(v.name);
-    if (v.loop && this.t >= this.anim.duration + 0.35) this.t = 0;
-  }
-
   // ---------- state transitions ----------
   _enter(state, anim) {
     this.state = state; this.phase = ''; this.queued = false; this.idleTime = 0;
@@ -192,7 +184,7 @@ export class Zee {
   _dev(a) {
     if (a === 'dev_hurt') this.takeHit(10, -this.face);
     if (a === 'dev_knockdown') this._knockdown(-this.face);
-    if (a === 'dev_defeat') { this.hp = 0; this._enter('defeat', 'defeat'); }
+    if (a === 'dev_defeat') { this.hp = 0; this._knockdown(-this.face, true); }
     if (a === 'dev_victory') this._enter('victory', 'victory');
     if (a === 'dev_revive') { this.hp = C.maxHp; this.z = 0; this.vz = 0; this._enter('idle'); }
   }
@@ -342,7 +334,7 @@ export class Zee {
       return;
     }
     if (this.animName === 'knockdown' && this.done) {
-      if (this.finalDefeat) { this._enter('defeat', 'defeat'); return; }
+      if (this.finalDefeat) { this.state = 'defeat'; return; }          // the very same knockdown, then she stays lying on its last frame
       if (this.t >= this.anim.duration + C.knockdownHold) { this.state = 'getup'; this._play('get_up'); this.invuln = 1.4; }
     }
   }
@@ -423,3 +415,4 @@ export class Zee {
     ctx.globalAlpha = 1;
   }
 }
+

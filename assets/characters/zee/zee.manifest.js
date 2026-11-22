@@ -82,11 +82,6 @@
                                   "frames":  12,
                                   "cols":  8
                               },
-                   "defeat":  {
-                                  "file":  "zee_defeat.png",
-                                  "frames":  12,
-                                  "cols":  8
-                              },
                    "victory":  {
                                    "file":  "zee_victory.png",
                                    "frames":  12,
@@ -269,13 +264,6 @@
                                                       10,
                                                       11
                                                   ]
-                                  },
-                       "defeat":  {
-                                      "strip":  "defeat",
-                                      "from":  0,
-                                      "to":  11,
-                                      "fps":  12,
-                                      "loop":  false
                                   },
                        "victory":  {
                                        "strip":  "victory",

@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611220226';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220226';
-import { SOFT } from './zee.js?v=202611220226';
+import { CONFIG } from './config.js?v=202611220234';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220234';
+import { SOFT } from './zee.js?v=202611220234';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -139,25 +139,6 @@ export class Enemy {
 
   _back(cd) { this.state = 'idle'; this._play('idle'); this.vw = 0; this.vh = 0; this.cool = Math.max(this.cool, cd / this.aggr); }
   _faceZee(z) { if (Math.abs(z.x - this.x) > 5) this.face = z.x > this.x ? 1 : -1; }
-
-  // ---------- animation test mode: no AI at all, it just plays the chosen animation ----------
-  testPlay(name) {
-    if (!this.anims[name]) return false;
-    this.state = 'test'; this._play(name); this.testHold = 0; this.vw = 0; this.vh = 0; this.leanK = 0; this.flash = 0; return true;
-  }
-  testUpdate(dt, T) {
-    const a = this.anim;
-    if (T.step) {                                                   // frame stepping (works while paused)
-      const n = a.frames, f = (this.frame + T.step + n) % n;
-      this.t = a.starts[f] + 0.0005; this.testHold = 0; return;
-    }
-    if (T.paused) return;
-    this.t += dt * T.speed;
-    if (!a.loop && !a.pingpong && this.t >= a.duration) {           // one-shots: hold the last frame a moment, then play again
-      this.testHold += dt;
-      if (this.testHold > 0.6) { this.t = 0; this.testHold = 0; }
-    }
-  }
 
   // ---------- on the move ----------
   _free(dt, g) {
@@ -393,3 +374,4 @@ export class Enemy {
     }
   }
 }
+

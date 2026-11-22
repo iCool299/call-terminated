@@ -1,14 +1,14 @@
-// Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611220226';
-import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220226';
-import { Input } from './input.js?v=202611220226';
-import { Zee } from './zee.js?v=202611220226';
-import { Game } from './game.js?v=202611220226';
-import { ENEMY_IDS } from './enemy.js?v=202611220226';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611220226';
-import { Level, qualityDepartment } from './level.js?v=202611220226';
-import { Camera } from './camera.js?v=202611220226';
-import { unlock } from './sfx.js?v=202611220226';
+// Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI.
+import { CONFIG } from './config.js?v=202611220234';
+import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220234';
+import { Input } from './input.js?v=202611220234';
+import { Zee } from './zee.js?v=202611220234';
+import { Game } from './game.js?v=202611220234';
+import { ENEMY_IDS } from './enemy.js?v=202611220234';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611220234';
+import { Level, qualityDepartment } from './level.js?v=202611220234';
+import { Camera } from './camera.js?v=202611220234';
+import { unlock } from './sfx.js?v=202611220234';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -55,13 +55,15 @@ document.addEventListener('touchend', (e) => {
   if (now - lastTap < 350) e.preventDefault();      // second tap of a double-tap
   lastTap = now;
 }, { passive: false });
-document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 || !e.target.closest('#viewer')) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 || true) e.preventDefault(); }, { passive: false });
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
 // ---------- touch UI ----------
 const isTouch = matchMedia('(pointer: coarse)').matches || new URLSearchParams(location.search).has('touch');
 document.body.classList.toggle('touch', isTouch);
-const cdButtons = { special: $('btn-special'), dodge: $('btn-dodge') };
+const cdButtons = { dodge: $('btn-dodge') };
+const specialBtn = $('btn-special');           // only on screen while the special is ready (it is earned by landing hits)
+let specialShown = null;
 
 // ---------- pause ----------
 function setPaused(p) { paused = p; $('pause-screen').hidden = !p; }
@@ -69,29 +71,14 @@ $('btn-pause').addEventListener('pointerdown', (e) => { e.preventDefault(); setP
 $('resume').addEventListener('click', () => setPaused(false));
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
 
-// ---------- animation viewer drawer ----------
-function buildViewer() {
-  const list = $('anim-list');
-  for (const name of Object.keys(character.anims)) {
-    const b = document.createElement('button');
-    b.textContent = name; b.dataset.n = name;
-    b.addEventListener('click', () => {
-      zee.viewer = { name, loop: true }; zee.z = 0; zee.invuln = 0;
-      list.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-    });
-    list.appendChild(b);
-  }
-  $('viewer-exit').addEventListener('click', () => { zee.viewer = null; zee._enter('idle'); list.querySelectorAll('button').forEach((x) => x.classList.remove('on')); });
-  $('viewer-flip').addEventListener('click', () => { zee.face *= -1; });
-  $('btn-viewer').addEventListener('click', () => { $('viewer').classList.toggle('open'); });
-  $('viewer-close').addEventListener('click', () => $('viewer').classList.remove('open'));
-}
 
 // HUD lives in src/hud.js (arcade panels: portrait, HP, SP, KO)
 let hudLast = performance.now();
 function drawHud() { const now = performance.now(), dt = Math.min(0.1, (now - hudLast) / 1000); hudLast = now; drawArcadeHud(ctx, zee, game, dt); }
 const cdCache = {};
 function updateButtons() {       // only touch the DOM when a value actually changed (style writes are expensive on phones)
+  const ready = zee.cd.special <= 0;
+  if (ready !== specialShown) { specialShown = ready; specialBtn.style.display = ready ? '' : 'none'; }
   for (const [name, el] of Object.entries(cdButtons)) {
     const total = { special: CONFIG.zee.specialCooldown, dodge: CONFIG.zee.dodgeCooldown }[name];
     const left = zee.cd[name] / total;
@@ -131,49 +118,6 @@ function setupSpawner() {
   window.__LOOK = LOOK;
 }
 
-// ---------- game modes: Battle (default) / Animation test ----------
-function setupModes() {
-  const tgt = $('t-target'), anims = $('t-anims'), spd = $('t-speed');
-  const chip = (parent, label, on, fn) => { const b = document.createElement('button'); b.textContent = label; b.addEventListener('click', () => { fn(b); }); parent.appendChild(b); return b; };
-  const mark = (parent, b) => parent.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-  const targets = {};
-  targets.all = chip(tgt, 'all', true, (b) => { game.test.target = 'all'; mark(tgt, b); });
-  targets.all.classList.add('on');
-  for (const id of ENEMY_IDS) targets[id] = chip(tgt, id, false, (b) => { game.test.target = id; mark(tgt, b); });
-  for (const s of [0.1, 0.25, 0.5, 1]) { const b = chip(spd, s + 'x', s === 1, (bb) => { game.test.speed = s; mark(spd, bb); }); if (s === 1) b.classList.add('on'); }
-  $('t-pause').addEventListener('click', () => { game.test.paused = !game.test.paused; $('t-pause').textContent = game.test.paused ? 'Play' : 'Pause'; });
-  $('t-prev').addEventListener('click', () => { game.test.paused = true; $('t-pause').textContent = 'Play'; game.test.step = -1; });
-  $('t-next').addEventListener('click', () => { game.test.paused = true; $('t-pause').textContent = 'Play'; game.test.step = 1; });
-  $('t-flip').addEventListener('click', () => { for (const e of game.enemies) e.face *= -1; });
-  $('t-reset').addEventListener('click', () => enterTest());
-  let animBtns = [];
-  async function enterTest() {
-    const chars = [];
-    for (const id of ENEMY_IDS) chars.push([id, await enemyChar(id)]);
-    game.enterTest(chars);
-    const names = [];                                       // every animation any enemy has, in a sensible order
-    const order = ['idle', 'walk', 'punch', 'kick', 'throw_headset', 'hurt', 'knockdown', 'get_up', 'defeat', 'grab', 'hold', 'throw'];
-    for (const [, c] of chars) for (const n of Object.keys(c.anims)) if (!names.includes(n)) names.push(n);
-    names.sort((a, b) => (order.indexOf(a) + 99) % 99 - (order.indexOf(b) + 99) % 99);
-    anims.textContent = ''; animBtns = [];
-    for (const n of names) {
-      const b = chip(anims, n, false, () => { game.testSet(n); mark(anims, b); });
-      b.title = chars.filter(([, c]) => c.anims[n]).map(([id]) => id).join(', '); animBtns.push(b);
-    }
-    mark(anims, animBtns[0]);
-    $('t-pause').textContent = 'Pause';
-  }
-  function setMode(test) {
-    document.body.classList.toggle('testmode', test);
-    $('btn-mode').innerHTML = test ? 'Mode: Animation test &#8644;' : 'Mode: Battle &#8644;';
-    history.replaceState(null, '', test ? '?mode=test' : location.pathname);
-    if (test) enterTest(); else { game.exitTest(); zee.x = 400; zee.y = (CONFIG.floor.top + CONFIG.floor.bottom) / 2; }
-  }
-  $('btn-mode').addEventListener('click', () => setMode(!game.test));
-  $('btn-mode').tabIndex = -1;
-  if (new URLSearchParams(location.search).get('mode') === 'test') setMode(true);
-  window.__test = { set: (n, t) => game.testSet(n, t), state: () => game.test, enemies: () => game.enemies.map((e) => ({ id: e.id, anim: e.animName, frame: e.frame, frames: e.anim.frames, face: e.face })) };
-}
 
 // ---------- loop ----------
 // Logic runs on a fixed 120 Hz step (same behaviour on any device); drawing runs every display refresh
@@ -231,7 +175,7 @@ function frame(now) {
   // SCREEN transform: the HUD stays in screen space, so its size never changes with the camera
   ctx.setTransform(k, 0, 0, k, 0, 0);
   drawHud(); game.drawHud(ctx); updateButtons();
-  const text = `${zee.viewer ? 'viewer' : zee.state} | ${zee.animName} ${zee.frame + 1}/${zee.anim.frames} | v${VERSION}`;
+  const text = `${zee.state} | ${zee.animName} ${zee.frame + 1}/${zee.anim.frames} | v${VERSION}`;
   if (text !== readoutText) { readoutText = text; $('readout').textContent = text; }
   requestAnimationFrame(frame);
 }
@@ -243,9 +187,7 @@ function frame(now) {
     zee = new Zee(character, 260, (CONFIG.floor.top + CONFIG.floor.bottom) / 2);
     game = new Game(zee, bounds);
     game.level = level; game.camera = camera;
-    buildViewer();
     setupSpawner();
-    setupModes();
     await level.ready;                                  // the room art has loaded
     $('loading').remove();
     requestAnimationFrame((t) => { last = t; frame(t); });
@@ -254,3 +196,4 @@ function frame(now) {
     $('loading').textContent = 'Could not load assets: ' + err.message + ' (run through a local web server)';
   }
 })();
+
