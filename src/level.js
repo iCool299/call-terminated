@@ -20,8 +20,8 @@
 //   light: { rim, rimAlpha, rimPx, lightX, lightY, wash, washAlpha, feet } = how Zee and the enemies are lit in this room
 //   (rim / wash are [r,g,b]); the game eases from one room's light to the next (see setLight in assets.js).
 //   doorRight is the door to the NEXT room: while it is locked the player cannot pass it; no door (or unlocked) = open.
-import { CONFIG } from './config.js?v=202611220215';
-import { VERSION } from './assets.js?v=202611220215';
+import { CONFIG } from './config.js?v=202611220219';
+import { VERSION } from './assets.js?v=202611220219';
 
 const C = CONFIG.camera, F = CONFIG.floor;
 export const LAYER_H = 507;                       // layer height in pixels (the view shows 506.25)
@@ -36,7 +36,7 @@ const TRACKS = [
 export class Level {
   constructor(rooms = []) {
     this.rooms = []; this.width = 0; this._pending = [];
-    this.fx = { dof: true, rays: true };                         // finishing effects (key N turns them all off to compare)
+    this.fx = { dof: true, rays: true, refl: true, ao: true, ambient: true, flare: true };      // finishing effects (key N turns them all off to compare)
     this.tracks = TRACKS.map((t) => ({ ...t, canvas: null, res: 1, smooth: false }));
     for (const r of rooms) this.addRoom(r, false);
     this.build();
@@ -152,44 +152,128 @@ export class Level {
     ctx.imageSmoothingEnabled = false;
   }
 
-  // VOLUMETRIC LIGHT: soft shafts of sunlight falling from the windows, drawn additively OVER the characters (so they brighten inside a
-  // shaft, as if standing in it), with a glow where each shaft meets the floor and dust motes drifting and twinkling in the air.
-  // The room's art spec: rays: { color, alpha, top, bot, dx (sideways drift from top to bottom), floorY, shafts: [{x, w, a}], motes }.
+  // ---- helpers for the finishing effects ----
+  _canvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; }
+  // a soft blur that works everywhere (shrink, then enlarge with smoothing)
+  _soften(src, k) {
+    const s = this._canvas(src.width / k, src.height / k), sc = s.getContext('2d'); sc.imageSmoothingQuality = 'high'; sc.drawImage(src, 0, 0, s.width, s.height);
+    const d = this._canvas(src.width, src.height), dc = d.getContext('2d'); dc.imageSmoothingEnabled = true; dc.imageSmoothingQuality = 'high'; dc.drawImage(s, 0, 0, d.width, d.height);
+    return d;
+  }
+
+  // SUNLIGHT SHAFTS are painted ONCE into two soft textures (every other shaft in each), already blurred, so they have no hard edges
+  // at all; the two textures breathe against each other, so the light slowly shifts. spec: rays: { color, alpha, top, bot, dx, floorY, shafts, motes }
+  _rayTex(R) {
+    if (R._tex) return R._tex;
+    const S = 0.5, [cr, cg, cb] = R.color, lo = Math.min(...R.shafts.map((s) => s.x)) + R.dx - 70, hi = Math.max(...R.shafts.map((s) => s.x + s.w * 1.4)) + 70;
+    const top = R.top, H = R.bot - R.top + 30, W = hi - lo;
+    const set = (parity) => {
+      const c = this._canvas(W * S, H * S), x = c.getContext('2d'); x.scale(S, S); x.translate(-lo, -top);
+      const g = x.createLinearGradient(0, top, 0, R.bot);
+      g.addColorStop(0, `rgba(${cr},${cg},${cb},0)`); g.addColorStop(0.2, `rgba(${cr},${cg},${cb},0.8)`); g.addColorStop(0.65, `rgba(${cr},${cg},${cb},0.5)`); g.addColorStop(1, `rgba(${cr},${cg},${cb},0.1)`);
+      R.shafts.forEach((s, i) => {
+        if (i % 2 !== parity) return;
+        const grow = 1.4; x.globalAlpha = s.a === undefined ? 1 : s.a; x.fillStyle = g; x.beginPath();
+        x.moveTo(s.x, top); x.lineTo(s.x + s.w, top); x.lineTo(s.x + s.w * grow + R.dx, R.bot); x.lineTo(s.x - s.w * (grow - 1) + R.dx, R.bot); x.closePath(); x.fill();
+        if (R.floorY) {                                                // where it lands: a soft pool of light on the floor
+          x.save(); x.translate(s.x + s.w * 0.5 + R.dx * (R.floorY - top) / (R.bot - top), R.floorY); x.scale(1, 0.22);
+          const rx = s.w * 1.2 + 20, rg = x.createRadialGradient(0, 0, 0, 0, 0, rx);
+          rg.addColorStop(0, `rgba(${cr},${cg},${cb},0.9)`); rg.addColorStop(1, `rgba(${cr},${cg},${cb},0)`); x.fillStyle = rg; x.beginPath(); x.arc(0, 0, rx, 0, 6.2832); x.fill(); x.restore();
+        }
+      });
+      return this._soften(this._soften(c, 3), 2);                      // heavy blur: no edges, just glow
+    };
+    return (R._tex = { a: set(0), b: set(1), lo, top, w: W, h: H });
+  }
+
+  // Everything that is BEHIND the characters: soft contact shadows under the furniture, the reflection drifting across the window glass,
+  // the glow of the ceiling lights (they flicker now and then) and the monitors (a screensaver). room.ambient = { lamps, monitors, glass }.
+  drawAmbient(ctx, time, camX) {
+    for (const room of this.rooms) {
+      if (room.x0 + room.width < camX || room.x0 > camX + C.viewW) continue;
+      const A = room.ambient, x0 = room.x0;
+      if (this.fx.ao) {                                                // ambient occlusion: a soft dark pool on the floor at the foot of every object
+        ctx.save();
+        for (const o of (room.obstacles || [])) {
+          const base = o.base !== undefined ? o.base : o.y1 - 16, cx = x0 + (o.x0 + o.x1) / 2, rx = (o.x1 - o.x0) / 2 + 12;
+          ctx.save(); ctx.translate(cx, base + 1); ctx.scale(1, 0.1);
+          const g = ctx.createRadialGradient(0, 0, rx * 0.25, 0, 0, rx);
+          g.addColorStop(0, 'rgba(14,26,70,0.42)'); g.addColorStop(0.7, 'rgba(14,26,70,0.2)'); g.addColorStop(1, 'rgba(14,26,70,0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 6.2832); ctx.fill(); ctx.restore();
+        }
+        ctx.restore();
+      }
+      if (!A || !this.fx.ambient) continue;
+      if (A.monitors) A.monitors.forEach((m, i) => {                  // screensaver: a dim blue screen with a little bouncing badge
+        const tri = (v, mx) => { const p = ((v % (2 * mx)) + 2 * mx) % (2 * mx); return p < mx ? p : 2 * mx - p; };
+        ctx.save(); ctx.beginPath(); ctx.rect(x0 + m.x, m.y, m.w, m.h); ctx.clip();
+        const g = ctx.createLinearGradient(0, m.y, 0, m.y + m.h); g.addColorStop(0, '#16345f'); g.addColorStop(1, '#0c1d3c');
+        ctx.globalAlpha = 0.92; ctx.fillStyle = g; ctx.fillRect(x0 + m.x, m.y, m.w, m.h);
+        const bx = x0 + m.x + 2 + tri(time * 9 + i * 31, m.w - 14), by = m.y + 2 + tri(time * 6 + i * 17, m.h - 9);
+        ctx.globalAlpha = 1; ctx.fillStyle = '#5fb7ff'; ctx.fillRect(bx, by, 12, 6); ctx.fillStyle = '#d6efff'; ctx.fillRect(bx + 1, by + 1, 10, 1.5);
+        ctx.restore();
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; const cx = x0 + m.x + m.w / 2, cy = m.y + m.h / 2 + 14, r = m.w * 1.1;      // screen glow on the desk
+        const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r); rg.addColorStop(0, 'rgba(110,180,255,0.16)'); rg.addColorStop(1, 'rgba(110,180,255,0)');
+        ctx.fillStyle = rg; ctx.fillRect(cx - r, cy - r, r * 2, r * 2); ctx.restore();
+      });
+      if (A.lamps) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; A.lamps.forEach((l, i) => {
+        const h = Math.sin(Math.floor(time * 9 + i * 7) * 12.9898) * 43758.5453, rnd = h - Math.floor(h);      // a rare, short flicker (a different light each time)
+        const f = rnd < 0.035 ? 0.35 : 1 - 0.04 * Math.sin(time * 3 + i), cx = x0 + l.x + l.w / 2, r = l.w * 0.85;
+        ctx.save(); ctx.translate(cx, l.y + 10); ctx.scale(1, 0.5);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r); g.addColorStop(0, `rgba(190,225,255,${0.2 * f})`); g.addColorStop(1, 'rgba(190,225,255,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill(); ctx.restore();
+      }); ctx.restore(); }
+      if (A.glass) {                                                   // a faint highlight slowly drifting across the window panes (like clouds / the sky reflecting)
+        const G = A.glass; ctx.save(); ctx.beginPath(); ctx.rect(x0 + G.x0, G.y0, G.x1 - G.x0, G.y1 - G.y0); ctx.clip(); ctx.globalCompositeOperation = 'lighter';
+        const span = G.x1 - G.x0 + 300;
+        for (let b = 0; b < 2; b++) {
+          const px = x0 + G.x0 - 150 + (((time * (7 + b * 3) + b * span * 0.5) % span) + span) % span, sk = (G.y1 - G.y0) * 0.5;
+          const g = ctx.createLinearGradient(px, 0, px + 110, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.07)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(px + sk, G.y0); ctx.lineTo(px + 110 + sk, G.y0); ctx.lineTo(px + 110, G.y1); ctx.lineTo(px, G.y1); ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  // Everything IN FRONT of the characters: the sunlight shafts (drawn with "screen", so they only ever brighten and blend into the colours
+  // underneath, characters included), lens flares where the light comes in, and drifting dust motes.
   drawLight(ctx, time, camX) {
-    if (!this.fx.rays) return;
     for (const room of this.rooms) {
       const R = room.rays;
       if (!R || room.x0 + room.width < camX || room.x0 > camX + C.viewW) continue;
-      const [cr, cg, cb] = R.color, x0 = room.x0, H = R.bot - R.top;
-      ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      const g = ctx.createLinearGradient(0, R.top, 0, R.bot);
-      g.addColorStop(0, `rgba(${cr},${cg},${cb},0)`); g.addColorStop(0.18, `rgba(${cr},${cg},${cb},0.9)`); g.addColorStop(0.7, `rgba(${cr},${cg},${cb},0.55)`); g.addColorStop(1, `rgba(${cr},${cg},${cb},0.12)`);
-      R.shafts.forEach((s, i) => {
-        const sway = 1 + 0.22 * Math.sin(time * 0.55 + i * 1.9) + 0.08 * Math.sin(time * 1.3 + i * 4.1);     // the light breathes slowly
-        for (let p = 0; p < 3; p++) {                                  // three widths stacked = soft edges
-          const e = [0, 7, 16][p], k = [0.5, 0.3, 0.16][p], grow = 1.35;
-          ctx.globalAlpha = Math.max(0, R.alpha * (s.a === undefined ? 1 : s.a) * sway * k);
-          ctx.fillStyle = g; ctx.beginPath();
-          ctx.moveTo(x0 + s.x - e, R.top); ctx.lineTo(x0 + s.x + s.w + e, R.top);
-          ctx.lineTo(x0 + s.x + s.w * grow + e + R.dx, R.bot); ctx.lineTo(x0 + s.x - s.w * (grow - 1) - e + R.dx, R.bot); ctx.closePath(); ctx.fill();
+      const x0 = room.x0, [cr, cg, cb] = R.color;
+      ctx.save();
+      if (this.fx.rays) {
+        const T = this._rayTex(R); ctx.globalCompositeOperation = 'screen'; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        const ba = 0.5 + 0.5 * Math.sin(time * 0.35), bb = 0.5 + 0.5 * Math.sin(time * 0.27 + 2.1);        // the two sets breathe slowly, out of step
+        ctx.globalAlpha = R.alpha * (0.75 + 0.25 * ba); ctx.drawImage(T.a, x0 + T.lo, T.top, T.w, T.h);
+        ctx.globalAlpha = R.alpha * (0.75 + 0.25 * bb); ctx.drawImage(T.b, x0 + T.lo, T.top, T.w, T.h);
+        // dust motes: tiny specks drifting in the air, much brighter while inside the light
+        ctx.globalCompositeOperation = 'lighter'; const H = R.bot - R.top;
+        if (!R._m) { R._m = []; const lo = Math.min(...R.shafts.map((s) => s.x)) + R.dx, hi = Math.max(...R.shafts.map((s) => s.x + s.w)); for (let i = 0; i < (R.motes || 0); i++) R._m.push({ x: lo + Math.random() * (hi - lo), y: R.top + Math.random() * H, ph: Math.random() * 6.28, sp: 2 + Math.random() * 5, r: 0.5 + Math.random() * 0.8 }); R._lo = lo; R._hi = hi; R._t = time; }
+        const dt = Math.min(0.1, Math.max(0, time - R._t)); R._t = time;
+        for (const m of R._m) {
+          m.y += m.sp * 0.35 * dt; m.x += (Math.sin(time * 0.4 + m.ph) * 2.2 - 1.6) * dt;
+          if (m.y > R.bot) { m.y = R.top; m.x = R._lo + Math.random() * (R._hi - R._lo); } if (m.x < R._lo - 40) m.x = R._hi;
+          let inside = 0.2; for (const s of R.shafts) { const f = (m.y - R.top) / H, a = s.x + R.dx * f, b = a + s.w * (1 + 0.4 * f); if (m.x > a && m.x < b) { inside = 1; break; } }
+          ctx.globalAlpha = (0.2 + 0.8 * (0.5 + 0.5 * Math.sin(time * 1.7 + m.ph))) * inside * 0.6 * Math.min(1, (m.y - R.top) / 40);
+          ctx.fillStyle = `rgb(${cr},${cg},${cb})`; ctx.beginPath(); ctx.arc(x0 + m.x, m.y, m.r, 0, 6.2832); ctx.fill();
         }
-        if (R.floorY) {                                                // where the shaft lands: a soft pool of light on the floor
-          const fx = x0 + s.x + s.w * 0.5 + R.dx * (R.floorY - R.top) / H, rx = s.w * 1.1 + 18;
-          ctx.save(); ctx.translate(fx, R.floorY); ctx.scale(1, 0.22);
-          const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-          rg.addColorStop(0, `rgba(${cr},${cg},${cb},1)`); rg.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
-          ctx.globalAlpha = Math.max(0, R.alpha * (s.a === undefined ? 1 : s.a) * sway * 0.9); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 6.2832); ctx.fill(); ctx.restore();
-        }
-      });
-      // dust motes: tiny specks that drift and twinkle, much brighter while they are inside a shaft
-      if (!R._m) { R._m = []; const lo = Math.min(...R.shafts.map((s) => s.x)) + R.dx, hi = Math.max(...R.shafts.map((s) => s.x + s.w)); for (let i = 0; i < (R.motes || 0); i++) R._m.push({ x: lo + Math.random() * (hi - lo), y: R.top + Math.random() * H, ph: Math.random() * 6.28, sp: 2 + Math.random() * 5, r: 0.5 + Math.random() * 0.9 }); R._lo = lo; R._hi = hi; R._t = time; }
-      const dt = Math.min(0.1, Math.max(0, time - R._t)); R._t = time;
-      for (const m of R._m) {
-        m.y += m.sp * 0.35 * dt; m.x += (Math.sin(time * 0.4 + m.ph) * 2.2 - 1.6) * dt;
-        if (m.y > R.bot) { m.y = R.top; m.x = R._lo + Math.random() * (R._hi - R._lo); } if (m.x < R._lo - 40) m.x = R._hi;
-        let inside = 0.25; for (const s of R.shafts) { const f = (m.y - R.top) / H, a = s.x + R.dx * f, b = a + s.w * (1 + 0.35 * f); if (m.x > a && m.x < b) { inside = 1; break; } }
-        ctx.globalAlpha = (0.2 + 0.8 * (0.5 + 0.5 * Math.sin(time * 1.7 + m.ph))) * inside * 0.75 * Math.min(1, (m.y - R.top) / 40);
-        ctx.fillStyle = `rgb(${cr},${cg},${cb})`; ctx.beginPath(); ctx.arc(x0 + m.x, m.y, m.r, 0, 6.2832); ctx.fill();
+      }
+      // lens flares: a soft glow with a thin horizontal streak where the sun comes in, plus faint ghosts mirrored through the middle of the screen
+      if (this.fx.flare && room.ambient && room.ambient.flares) {
+        ctx.globalCompositeOperation = 'lighter'; const cxv = camX + C.viewW / 2, cyv = C.viewH / 2;
+        room.ambient.flares.forEach((f, i) => {
+          const fx = x0 + f.x; if (fx < camX - 120 || fx > camX + C.viewW + 120) return;
+          const k = (f.s || 1) * (0.8 + 0.2 * Math.sin(time * 0.6 + i * 2));
+          const glow = (x, y, r, a) => { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(255,240,205,${a})`); g.addColorStop(1, 'rgba(255,240,205,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); };
+          glow(fx, f.y, 46 * k, 0.2 * k); ctx.save(); ctx.translate(fx, f.y); ctx.scale(1, 0.05); glow(0, 0, 150 * k, 0.32 * k); ctx.restore();
+          for (const [t, r, a, col] of [[-0.35, 14, 0.08, '160,210,255'], [-0.7, 22, 0.06, '255,210,160'], [-1.1, 9, 0.07, '190,255,220']]) {
+            const gx = cxv + (fx - cxv) * t, gy = cyv + (f.y - cyv) * t, g = ctx.createRadialGradient(gx, gy, r * 0.5, gx, gy, r);
+            g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(0.75, `rgba(${col},${a * k})`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.fillRect(gx - r, gy - r, r * 2, r * 2);
+          }
+        });
       }
       ctx.restore();
     }
@@ -299,8 +383,17 @@ export function qualityDepartment() {
     art: { arch: { src: 'assets/levels/r01_quality_department.webp', scale: R01_SCALE, y: C.viewH - R01_H * R01_SCALE, smooth: true } },
     // SUNLIGHT SHAFTS from the tall windows (glass spans x 273-1018, Y 80-298). The floor patches painted in the art slant down-left, so the shafts do too.
     rays: {
-      color: [255, 244, 214], alpha: 0.33, top: 84, bot: 478, dx: -150, floorY: 440, motes: 70,
+      color: [255, 244, 214], alpha: 0.42, top: 84, bot: 478, dx: -150, floorY: 440, motes: 70,
       shafts: [{ x: 292, w: 46, a: 0.8 }, { x: 372, w: 34, a: 0.6 }, { x: 436, w: 70, a: 1 }, { x: 540, w: 38, a: 0.7 }, { x: 604, w: 62, a: 0.95 }, { x: 690, w: 44, a: 0.6 }, { x: 760, w: 80, a: 1 }, { x: 866, w: 38, a: 0.7 }, { x: 930, w: 56, a: 0.85 }],
+    },
+    // FLOOR: glossy tiles, so the characters get a mirror image under their feet (0 = matte, 1 = mirror).
+    reflect: 0.32,
+    // AMBIENT LIFE (world units, measured from the art): ceiling lights (x, y, w), monitor screens, the window glass, and where the sun flares.
+    ambient: {
+      lamps: [{ x: 447, y: 52, w: 175 }, { x: 1009, y: 50, w: 139 }, { x: 1377, y: 50, w: 121 }],
+      monitors: [{ x: 392, y: 264, w: 57, h: 31 }, { x: 755, y: 263, w: 51, h: 31 }],
+      glass: { x0: 273, y0: 80, x1: 1018, y1: 298 },
+      flares: [{ x: 440, y: 98, s: 1 }, { x: 790, y: 92, s: 1.2 }, { x: 960, y: 100, s: 0.8 }],
     },
     // SOLID OBJECTS (room-local world units; measured from the art, press B in the game to see the boxes). Everything stands against the
     // back wall, so each box covers the object's footprint plus a little depth (y1 = the front edge). h = height: Zee's full jump

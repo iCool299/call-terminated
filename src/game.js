@@ -1,8 +1,9 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611220215';
-import { Enemy } from './enemy.js?v=202611220215';
-import { SOFT } from './zee.js?v=202611220215';
-import { sfx } from './sfx.js?v=202611220215';
+import { CONFIG } from './config.js?v=202611220219';
+import { Enemy } from './enemy.js?v=202611220219';
+import { SOFT } from './zee.js?v=202611220219';
+import { sfx } from './sfx.js?v=202611220219';
+import { drawAnim } from './assets.js?v=202611220219';
 
 const E = CONFIG.enemy;
 
@@ -343,8 +344,29 @@ export class Game {
   }
 
   // ---------- drawing ----------
+  // FLOOR REFLECTIONS on a glossy floor: each character is mirrored around their feet, faded out over ~130 units, at the room's `reflect` strength.
+  _reflections(ctx, alpha) {
+    const lv = this.level; if (!lv || !lv.fx.refl) return;
+    const z = this.zee, k = (lv.roomAt(z.x) || {}).reflect || 0; if (k <= 0) return;
+    const T = this._rt || (this._rt = (() => { const c = document.createElement('canvas'); c.width = 380; c.height = 180; return c; })()), t = T.getContext('2d');
+    const one = (c, held) => {
+      if (!c.character || held) return;
+      const x = c.px !== undefined ? c.px + (c.x - c.px) * alpha : c.x, y = c.py !== undefined ? c.py + (c.y - c.py) * alpha : c.y, lift = Math.max(0, c.z || 0);
+      t.setTransform(1, 0, 0, 1, 0, 0); t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, T.width, T.height);
+      t.setTransform(1, 0, 0, -1, 190 - x, y);                                    // mirror around the feet (y), centred on x
+      const fade = c.state === 'spawn' ? 1 - c.spawnT / 0.5 : 1;
+      drawAnim(t, c.character, c.anim, c.frame, x, y - lift, c.face, fade);
+      t.setTransform(1, 0, 0, 1, 0, 0); t.globalCompositeOperation = 'destination-in';
+      const g = t.createLinearGradient(0, 0, 0, 140); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); t.fillStyle = g; t.fillRect(0, 0, T.width, 180);
+      ctx.save(); ctx.globalAlpha = k; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(T, x - 190, y + 1); ctx.restore();
+    };
+    one(z, z.state === 'held');
+    for (const e of this.enemies) one(e, e.state === 'dead');
+  }
+
   draw(ctx, alpha) {
     const z = this.zee;
+    this._reflections(ctx, alpha);
     for (const it of this.items) this._drawItem(ctx, it);
     const list = [{ y: z.py !== undefined ? z.py + (z.y - z.py) * alpha : z.y, d: () => this._scaled(ctx, z, alpha, () => z.draw(ctx, alpha)) }];
     for (const e of this.enemies) list.push({ y: e.py !== undefined ? e.py + (e.y - e.py) * alpha : e.y, d: () => this._scaled(ctx, e, alpha, () => e.draw(ctx, alpha)) });

@@ -1,14 +1,14 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611220215';
-import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220215';
-import { Input } from './input.js?v=202611220215';
-import { Zee } from './zee.js?v=202611220215';
-import { Game } from './game.js?v=202611220215';
-import { ENEMY_IDS } from './enemy.js?v=202611220215';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611220215';
-import { Level, qualityDepartment } from './level.js?v=202611220215';
-import { Camera } from './camera.js?v=202611220215';
-import { unlock } from './sfx.js?v=202611220215';
+import { CONFIG } from './config.js?v=202611220219';
+import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220219';
+import { Input } from './input.js?v=202611220219';
+import { Zee } from './zee.js?v=202611220219';
+import { Game } from './game.js?v=202611220219';
+import { ENEMY_IDS } from './enemy.js?v=202611220219';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611220219';
+import { Level, qualityDepartment } from './level.js?v=202611220219';
+import { Camera } from './camera.js?v=202611220219';
+import { unlock } from './sfx.js?v=202611220219';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -186,7 +186,7 @@ let acc = 0, readoutText = '', showSolids = false;
 let fxOn = true, blurLen = 0, prevGx = 0;                       // finishing effects: sunlight shafts, depth of field, motion blur
 addEventListener('keydown', (e) => {
   if (e.key === 'b' || e.key === 'B') showSolids = !showSolids;
-  if (e.key === 'n' || e.key === 'N') { fxOn = !fxOn; level.fx.dof = level.fx.rays = fxOn; }       // N: all finishing effects off / on, to compare
+  if (e.key === 'n' || e.key === 'N') { fxOn = !fxOn; for (const k in level.fx) level.fx[k] = fxOn; }       // N: all finishing effects off / on, to compare
 });
 function frame(now) {
   let dt = (now - last) / 1000; last = now;
@@ -214,6 +214,7 @@ function frame(now) {
   const target = fxOn ? Math.min(11, camV * 2.4 + act + game.shake * 0.55) : 0;
   blurLen += (target - blurLen) * Math.min(1, dt * (target > blurLen ? 16 : 7));                       // quick to build, slower to fade
   level.drawBack(ctx, camera.gx, blurLen);
+  level.drawAmbient(ctx, now / 1000, camera.gx);
   game.draw(ctx, a);
   level.drawLight(ctx, now / 1000, camera.gx);
   level.drawFront(ctx, camera.gx, blurLen);
