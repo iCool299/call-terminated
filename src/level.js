@@ -20,8 +20,8 @@
 //   light: { rim, rimAlpha, rimPx, lightX, lightY, wash, washAlpha, feet } = how Zee and the enemies are lit in this room
 //   (rim / wash are [r,g,b]); the game eases from one room's light to the next (see setLight in assets.js).
 //   doorRight is the door to the NEXT room: while it is locked the player cannot pass it; no door (or unlocked) = open.
-import { CONFIG } from './config.js?v=202611220212';
-import { VERSION } from './assets.js?v=202611220212';
+import { CONFIG } from './config.js?v=202611220215';
+import { VERSION } from './assets.js?v=202611220215';
 
 const C = CONFIG.camera, F = CONFIG.floor;
 export const LAYER_H = 507;                       // layer height in pixels (the view shows 506.25)
@@ -36,6 +36,7 @@ const TRACKS = [
 export class Level {
   constructor(rooms = []) {
     this.rooms = []; this.width = 0; this._pending = [];
+    this.fx = { dof: true, rays: true };                         // finishing effects (key N turns them all off to compare)
     this.tracks = TRACKS.map((t) => ({ ...t, canvas: null, res: 1, smooth: false }));
     for (const r of rooms) this.addRoom(r, false);
     this.build();
@@ -84,8 +85,27 @@ export class Level {
       const c = cv.getContext('2d'); c.scale(t.res, t.res);             // from here on everything is in world units
       const edges = this.rooms.map((r) => Math.round(r.x0 * t.speed)); edges.push(wt);
       this.rooms.forEach((room, i) => this._paint(c, t, room, edges[i], edges[i + 1] - edges[i]));
-      t.canvas = cv;
+      t.canvas = cv; t.dof = null;
     }
+    Promise.all(this._pending).then(() => this._bakeDof());
+  }
+
+  // DEPTH OF FIELD, baked once when the art has loaded: a softened copy of the wall layer whose opacity fades from 1 (high up, far away:
+  // ceiling, windows, skyline) to 0 at Y 340 (the furniture and the floor band stay perfectly sharp). Drawn over the sharp layer = a slight blur
+  // that increases with distance. A blur by shrinking and enlarging with smoothing (works in every browser, no canvas filter needed).
+  _bakeDof() {
+    const t = this.tracks.find((x) => x.id === 'arch');
+    if (!t || !t.canvas) return;
+    const w = t.canvas.width, h = t.canvas.height;
+    const shrink = (src, k) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(src.width / k)); c.height = Math.max(1, Math.round(src.height / k)); const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, c.width, c.height); return c; };
+    const d = document.createElement('canvas'); d.width = w; d.height = h;
+    const dc = d.getContext('2d'); dc.imageSmoothingEnabled = true; dc.imageSmoothingQuality = 'high';
+    dc.drawImage(shrink(shrink(t.canvas, 2), 2), 0, 0, w, h);                  // 4x down and back up
+    dc.globalCompositeOperation = 'destination-in';
+    const g = dc.createLinearGradient(0, 0, 0, h), r = t.res / h;
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(Math.min(1, 240 * r), 'rgba(0,0,0,1)'); g.addColorStop(Math.min(1, 340 * r), 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    dc.fillStyle = g; dc.fillRect(0, 0, w, h);
+    t.dof = d;
   }
   _paint(c, t, room, u0, w) {
     const art = room.art && room.art[t.id];
@@ -110,16 +130,69 @@ export class Level {
   }
 
   // ctx must already have the camera's world transform. camX = the camera's x in world units (device-pixel aligned).
-  drawBack(ctx, camX) { this._draw(ctx, camX, false); }
-  drawFront(ctx, camX) { this._draw(ctx, camX, true); }
-  _draw(ctx, camX, front) {
+  // blur = motion blur length in world units (0 = none): the layer is drawn several times shifted along the motion and averaged
+  // (tap i is drawn at opacity 1/(i+1), which makes every tap count the same). Closer layers move more, so they smear more.
+  drawBack(ctx, camX, blur = 0) { this._draw(ctx, camX, false, blur); }
+  drawFront(ctx, camX, blur = 0) { this._draw(ctx, camX, true, blur); }
+  _draw(ctx, camX, front, blur) {
     for (const t of this.tracks) {
       if (t.front !== front || !t.canvas) continue;
       ctx.imageSmoothingEnabled = t.smooth; ctx.imageSmoothingQuality = 'high';    // painted art is smoothed; pixel art stays crisp (nearest)
-      const sx = Math.max(0, Math.min(t.canvas.width / t.res - C.viewW, t.speed * camX));
-      ctx.drawImage(t.canvas, sx * t.res, 0, C.viewW * t.res, C.viewH * t.res, camX, 0, C.viewW, C.viewH);
+      const maxSx = t.canvas.width / t.res - C.viewW, base = t.speed * camX, b = blur * t.speed;
+      const n = b < 0.5 ? 1 : Math.min(7, Math.ceil(b * 1.6) + 1);
+      const dof = this.fx.dof && t.dof;
+      for (let i = 0; i < n; i++) {
+        const sx = Math.max(0, Math.min(maxSx, base + (n > 1 ? (i / (n - 1) - 0.5) * b : 0)));
+        ctx.globalAlpha = 1 / (i + 1);
+        ctx.drawImage(t.canvas, sx * t.res, 0, C.viewW * t.res, C.viewH * t.res, camX, 0, C.viewW, C.viewH);
+        if (dof) ctx.drawImage(t.dof, sx * t.res, 0, C.viewW * t.res, C.viewH * t.res, camX, 0, C.viewW, C.viewH);
+      }
+      ctx.globalAlpha = 1;
     }
     ctx.imageSmoothingEnabled = false;
+  }
+
+  // VOLUMETRIC LIGHT: soft shafts of sunlight falling from the windows, drawn additively OVER the characters (so they brighten inside a
+  // shaft, as if standing in it), with a glow where each shaft meets the floor and dust motes drifting and twinkling in the air.
+  // The room's art spec: rays: { color, alpha, top, bot, dx (sideways drift from top to bottom), floorY, shafts: [{x, w, a}], motes }.
+  drawLight(ctx, time, camX) {
+    if (!this.fx.rays) return;
+    for (const room of this.rooms) {
+      const R = room.rays;
+      if (!R || room.x0 + room.width < camX || room.x0 > camX + C.viewW) continue;
+      const [cr, cg, cb] = R.color, x0 = room.x0, H = R.bot - R.top;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createLinearGradient(0, R.top, 0, R.bot);
+      g.addColorStop(0, `rgba(${cr},${cg},${cb},0)`); g.addColorStop(0.18, `rgba(${cr},${cg},${cb},0.9)`); g.addColorStop(0.7, `rgba(${cr},${cg},${cb},0.55)`); g.addColorStop(1, `rgba(${cr},${cg},${cb},0.12)`);
+      R.shafts.forEach((s, i) => {
+        const sway = 1 + 0.22 * Math.sin(time * 0.55 + i * 1.9) + 0.08 * Math.sin(time * 1.3 + i * 4.1);     // the light breathes slowly
+        for (let p = 0; p < 3; p++) {                                  // three widths stacked = soft edges
+          const e = [0, 7, 16][p], k = [0.5, 0.3, 0.16][p], grow = 1.35;
+          ctx.globalAlpha = Math.max(0, R.alpha * (s.a === undefined ? 1 : s.a) * sway * k);
+          ctx.fillStyle = g; ctx.beginPath();
+          ctx.moveTo(x0 + s.x - e, R.top); ctx.lineTo(x0 + s.x + s.w + e, R.top);
+          ctx.lineTo(x0 + s.x + s.w * grow + e + R.dx, R.bot); ctx.lineTo(x0 + s.x - s.w * (grow - 1) - e + R.dx, R.bot); ctx.closePath(); ctx.fill();
+        }
+        if (R.floorY) {                                                // where the shaft lands: a soft pool of light on the floor
+          const fx = x0 + s.x + s.w * 0.5 + R.dx * (R.floorY - R.top) / H, rx = s.w * 1.1 + 18;
+          ctx.save(); ctx.translate(fx, R.floorY); ctx.scale(1, 0.22);
+          const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+          rg.addColorStop(0, `rgba(${cr},${cg},${cb},1)`); rg.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+          ctx.globalAlpha = Math.max(0, R.alpha * (s.a === undefined ? 1 : s.a) * sway * 0.9); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 6.2832); ctx.fill(); ctx.restore();
+        }
+      });
+      // dust motes: tiny specks that drift and twinkle, much brighter while they are inside a shaft
+      if (!R._m) { R._m = []; const lo = Math.min(...R.shafts.map((s) => s.x)) + R.dx, hi = Math.max(...R.shafts.map((s) => s.x + s.w)); for (let i = 0; i < (R.motes || 0); i++) R._m.push({ x: lo + Math.random() * (hi - lo), y: R.top + Math.random() * H, ph: Math.random() * 6.28, sp: 2 + Math.random() * 5, r: 0.5 + Math.random() * 0.9 }); R._lo = lo; R._hi = hi; R._t = time; }
+      const dt = Math.min(0.1, Math.max(0, time - R._t)); R._t = time;
+      for (const m of R._m) {
+        m.y += m.sp * 0.35 * dt; m.x += (Math.sin(time * 0.4 + m.ph) * 2.2 - 1.6) * dt;
+        if (m.y > R.bot) { m.y = R.top; m.x = R._lo + Math.random() * (R._hi - R._lo); } if (m.x < R._lo - 40) m.x = R._hi;
+        let inside = 0.25; for (const s of R.shafts) { const f = (m.y - R.top) / H, a = s.x + R.dx * f, b = a + s.w * (1 + 0.35 * f); if (m.x > a && m.x < b) { inside = 1; break; } }
+        ctx.globalAlpha = (0.2 + 0.8 * (0.5 + 0.5 * Math.sin(time * 1.7 + m.ph))) * inside * 0.75 * Math.min(1, (m.y - R.top) / 40);
+        ctx.fillStyle = `rgb(${cr},${cg},${cb})`; ctx.beginPath(); ctx.arc(x0 + m.x, m.y, m.r, 0, 6.2832); ctx.fill();
+      }
+      ctx.restore();
+    }
   }
 }
 
@@ -224,6 +297,11 @@ export function qualityDepartment() {
   return {
     id: 'R01', name: 'Quality Department', width: Math.round(R01_W * R01_SCALE), doorRight: { locked: true },
     art: { arch: { src: 'assets/levels/r01_quality_department.webp', scale: R01_SCALE, y: C.viewH - R01_H * R01_SCALE, smooth: true } },
+    // SUNLIGHT SHAFTS from the tall windows (glass spans x 273-1018, Y 80-298). The floor patches painted in the art slant down-left, so the shafts do too.
+    rays: {
+      color: [255, 244, 214], alpha: 0.33, top: 84, bot: 478, dx: -150, floorY: 440, motes: 70,
+      shafts: [{ x: 292, w: 46, a: 0.8 }, { x: 372, w: 34, a: 0.6 }, { x: 436, w: 70, a: 1 }, { x: 540, w: 38, a: 0.7 }, { x: 604, w: 62, a: 0.95 }, { x: 690, w: 44, a: 0.6 }, { x: 760, w: 80, a: 1 }, { x: 866, w: 38, a: 0.7 }, { x: 930, w: 56, a: 0.85 }],
+    },
     // SOLID OBJECTS (room-local world units; measured from the art, press B in the game to see the boxes). Everything stands against the
     // back wall, so each box covers the object's footprint plus a little depth (y1 = the front edge). h = height: Zee's full jump
     // reaches ~115, so desks, chairs, pots and counters can be jumped over; the pillar, the printer and the tall cabinet cannot.

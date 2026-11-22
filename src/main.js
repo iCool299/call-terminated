@@ -1,14 +1,14 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611220212';
-import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220212';
-import { Input } from './input.js?v=202611220212';
-import { Zee } from './zee.js?v=202611220212';
-import { Game } from './game.js?v=202611220212';
-import { ENEMY_IDS } from './enemy.js?v=202611220212';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611220212';
-import { Level, qualityDepartment } from './level.js?v=202611220212';
-import { Camera } from './camera.js?v=202611220212';
-import { unlock } from './sfx.js?v=202611220212';
+import { CONFIG } from './config.js?v=202611220215';
+import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220215';
+import { Input } from './input.js?v=202611220215';
+import { Zee } from './zee.js?v=202611220215';
+import { Game } from './game.js?v=202611220215';
+import { ENEMY_IDS } from './enemy.js?v=202611220215';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611220215';
+import { Level, qualityDepartment } from './level.js?v=202611220215';
+import { Camera } from './camera.js?v=202611220215';
+import { unlock } from './sfx.js?v=202611220215';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -183,7 +183,11 @@ const camera = new Camera();
 const bounds = { minX: 40, maxX: level.width - 40, minY: CONFIG.floor.top, maxY: CONFIG.floor.bottom };   // updated every frame from the level (locked doors are walls)
 const STEP = CONFIG.simStep;
 let acc = 0, readoutText = '', showSolids = false;
-addEventListener('keydown', (e) => { if (e.key === 'b' || e.key === 'B') showSolids = !showSolids; });
+let fxOn = true, blurLen = 0, prevGx = 0;                       // finishing effects: sunlight shafts, depth of field, motion blur
+addEventListener('keydown', (e) => {
+  if (e.key === 'b' || e.key === 'B') showSolids = !showSolids;
+  if (e.key === 'n' || e.key === 'N') { fxOn = !fxOn; level.fx.dof = level.fx.rays = fxOn; }       // N: all finishing effects off / on, to compare
+});
 function frame(now) {
   let dt = (now - last) / 1000; last = now;
   if (dt > 0.1) dt = 0.1;                       // tab was throttled: don't fast-forward
@@ -204,9 +208,15 @@ function frame(now) {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   // WORLD transform: zoomed out and scrolled by the camera (whole device pixels), screen shake on top
   ctx.setTransform(ppu, 0, 0, ppu, Math.round(sx * k) - camera.px, Math.round(sy * k));
-  level.drawBack(ctx, camera.gx);
+  // MOTION BLUR of the world: grows with how fast the camera moves (running) and with the action (attacks, dodges, the special, impacts)
+  const camV = Math.abs(camera.gx - prevGx) * (1 / 60) / Math.max(dt, 1 / 240); prevGx = camera.gx;     // world units per 60 Hz frame
+  const zs = zee.state, act = (zs === 'attack' ? 1.4 : 0) + (zs === 'dodge' ? 3 : 0) + (zee.animName === 'special' ? 3.5 : 0);
+  const target = fxOn ? Math.min(11, camV * 2.4 + act + game.shake * 0.55) : 0;
+  blurLen += (target - blurLen) * Math.min(1, dt * (target > blurLen ? 16 : 7));                       // quick to build, slower to fade
+  level.drawBack(ctx, camera.gx, blurLen);
   game.draw(ctx, a);
-  level.drawFront(ctx, camera.gx);
+  level.drawLight(ctx, now / 1000, camera.gx);
+  level.drawFront(ctx, camera.gx, blurLen);
   if (showSolids) {                                                              // B: draw the solid-object boxes (top edge = back, bottom = front)
     ctx.save(); ctx.font = '9px sans-serif';
     for (const o of level.obstacles()) {
