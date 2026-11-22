@@ -1,9 +1,9 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611220219';
-import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220219';
-import { SOFT } from './zee.js?v=202611220219';
+import { CONFIG } from './config.js?v=202611220226';
+import { frameAt, drawAnim, silhouette, LOOK } from './assets.js?v=202611220226';
+import { SOFT } from './zee.js?v=202611220226';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);

@@ -1,14 +1,14 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI / animation viewer.
-import { CONFIG } from './config.js?v=202611220219';
-import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220219';
-import { Input } from './input.js?v=202611220219';
-import { Zee } from './zee.js?v=202611220219';
-import { Game } from './game.js?v=202611220219';
-import { ENEMY_IDS } from './enemy.js?v=202611220219';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611220219';
-import { Level, qualityDepartment } from './level.js?v=202611220219';
-import { Camera } from './camera.js?v=202611220219';
-import { unlock } from './sfx.js?v=202611220219';
+import { CONFIG } from './config.js?v=202611220226';
+import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611220226';
+import { Input } from './input.js?v=202611220226';
+import { Zee } from './zee.js?v=202611220226';
+import { Game } from './game.js?v=202611220226';
+import { ENEMY_IDS } from './enemy.js?v=202611220226';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611220226';
+import { Level, qualityDepartment } from './level.js?v=202611220226';
+import { Camera } from './camera.js?v=202611220226';
+import { unlock } from './sfx.js?v=202611220226';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');
@@ -213,6 +213,7 @@ function frame(now) {
   const zs = zee.state, act = (zs === 'attack' ? 1.4 : 0) + (zs === 'dodge' ? 3 : 0) + (zee.animName === 'special' ? 3.5 : 0);
   const target = fxOn ? Math.min(11, camV * 2.4 + act + game.shake * 0.55) : 0;
   blurLen += (target - blurLen) * Math.min(1, dt * (target > blurLen ? 16 : 7));                       // quick to build, slower to fade
+  level.setScale(ppu);
   level.drawBack(ctx, camera.gx, blurLen);
   level.drawAmbient(ctx, now / 1000, camera.gx);
   game.draw(ctx, a);

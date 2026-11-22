@@ -20,8 +20,8 @@
 //   light: { rim, rimAlpha, rimPx, lightX, lightY, wash, washAlpha, feet } = how Zee and the enemies are lit in this room
 //   (rim / wash are [r,g,b]); the game eases from one room's light to the next (see setLight in assets.js).
 //   doorRight is the door to the NEXT room: while it is locked the player cannot pass it; no door (or unlocked) = open.
-import { CONFIG } from './config.js?v=202611220219';
-import { VERSION } from './assets.js?v=202611220219';
+import { CONFIG } from './config.js?v=202611220226';
+import { VERSION } from './assets.js?v=202611220226';
 
 const C = CONFIG.camera, F = CONFIG.floor;
 export const LAYER_H = 507;                       // layer height in pixels (the view shows 506.25)
@@ -85,9 +85,21 @@ export class Level {
       const c = cv.getContext('2d'); c.scale(t.res, t.res);             // from here on everything is in world units
       const edges = this.rooms.map((r) => Math.round(r.x0 * t.speed)); edges.push(wt);
       this.rooms.forEach((room, i) => this._paint(c, t, room, edges[i], edges[i + 1] - edges[i]));
-      t.canvas = cv; t.dof = null;
+      t.canvas = cv; t.dof = null; t.view = t.viewDof = null;
     }
-    Promise.all(this._pending).then(() => this._bakeDof());
+    this._ready = false;
+    Promise.all(this._pending).then(() => { this._bakeDof(); this._ready = true; });
+  }
+
+  // CRISP AT ANY SIZE: the browser would otherwise re-scale the big art every frame with a quality it may lower under load (the background went
+  // soft after a while). Instead the art is scaled ONCE to the exact device size of the screen (halving steps + the best filter), and every
+  // frame is a plain 1:1 copy at whole device pixels, so it can never change quality. Rebuilt only when the screen size changes.
+  setScale(ppu) { if (Math.abs(ppu - (this.ppu || 0)) > 1e-4) this.ppu = ppu; }
+  _scaleTo(src, f) {
+    let c = src; const w = src.width * f, h = src.height * f;
+    while (w < c.width / 2) { const n = this._canvas(Math.round(c.width / 2), Math.round(c.height / 2)), x = n.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, n.width, n.height); c = n; }
+    const out = this._canvas(Math.round(w), Math.round(h)), o = out.getContext('2d'); o.imageSmoothingEnabled = true; o.imageSmoothingQuality = 'high'; o.drawImage(c, 0, 0, out.width, out.height);
+    return out;
   }
 
   // DEPTH OF FIELD, baked once when the art has loaded: a softened copy of the wall layer whose opacity fades from 1 (high up, far away:
@@ -141,6 +153,20 @@ export class Level {
       const maxSx = t.canvas.width / t.res - C.viewW, base = t.speed * camX, b = blur * t.speed;
       const n = b < 0.5 ? 1 : Math.min(7, Math.ceil(b * 1.6) + 1);
       const dof = this.fx.dof && t.dof;
+      const p = this.ppu;
+      if (this._ready && p) {
+        if (t.vppu !== p || !t.view || (t.dof && !t.viewDof)) { t.view = this._scaleTo(t.canvas, p / t.res); t.viewDof = t.dof ? this._scaleTo(t.dof, p / t.res) : null; t.vppu = p; }
+        const tr = ctx.getTransform(), vw = Math.round(C.viewW * p), vh = Math.min(t.view.height, Math.round(C.viewH * p));
+        const dx = Math.round(tr.e + camX * p), dy = Math.round(tr.f);
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;       // plain 1:1 copy at whole device pixels
+        for (let i = 0; i < n; i++) {
+          const sx = Math.max(0, Math.min(t.view.width - vw, Math.round((base + (n > 1 ? (i / (n - 1) - 0.5) * b : 0)) * p)));
+          ctx.globalAlpha = 1 / (i + 1);
+          ctx.drawImage(t.view, sx, 0, vw, vh, dx, dy, vw, vh);
+          if (dof && t.viewDof) ctx.drawImage(t.viewDof, sx, 0, vw, vh, dx, dy, vw, vh);
+        }
+        ctx.restore(); continue;
+      }
       for (let i = 0; i < n; i++) {
         const sx = Math.max(0, Math.min(maxSx, base + (n > 1 ? (i / (n - 1) - 0.5) * b : 0)));
         ctx.globalAlpha = 1 / (i + 1);
