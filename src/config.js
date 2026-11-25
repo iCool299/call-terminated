@@ -1,4 +1,4 @@
-﻿// All balance numbers and key bindings live here so they are easy to tune.
+// All balance numbers and key bindings live here so they are easy to tune.
 export const CONFIG = {
   view: { w: 640, h: 360 },            // the SCREEN (canvas) in logical units: the HUD is laid out in this space and never zooms
   // CAMERA: the world is drawn through a zoomed-out camera. zoom = view.w / viewW (about 0.71), so 900 x 506 world units are visible
@@ -64,8 +64,8 @@ export const CONFIG = {
   // Escalation: keep landing hits without being hit and the fight escalates (3 levels): Zee hits harder and charges her special
   // faster, the enemies attack more often. Getting hit costs one level; going quiet drains it slowly.
   escalation: { max: 3, perHit: 0.07, perKnock: 0.12, perKill: 0.2, hurtLoss: 1, idleAfter: 3.5, decay: 0.12, zeeDmg: 0.10, chargeBonus: 0.25, enemyAggr: 0.12 },
-  // Iced coffee: sometimes dropped by a defeated enemy (more likely from heavies, and when Zee is low); walk over it to heal.
-  coffee: { chance: 0.25, chanceLow: 0.45, lowHpPct: 0.4, heavyBonus: 0.15, heal: 30, life: 12, maxOnFloor: 2, pickupX: 20, pickupY: 14 },
+  // Iced coffee: sometimes dropped by a defeated enemy (more likely from heavies, and when Zee is low); walk over it to heal. It stays on the floor until picked up.
+  coffee: { chance: 0.38, chanceLow: 0.6, lowHpPct: 0.4, heavyBonus: 0.15, heal: 30, maxOnFloor: 4, pickupX: 20, pickupY: 14 },
 
   windupSpeed: 1.4,       // wind-up frames (before the first hit frame) play this much faster
   simStep: 1 / 120,        // fixed logic step (seconds); rendering runs at the display refresh rate

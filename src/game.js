@@ -1,9 +1,9 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611220247';
-import { Enemy } from './enemy.js?v=202611220247';
-import { SOFT } from './zee.js?v=202611220247';
-import { sfx } from './sfx.js?v=202611220247';
-import { drawAnim } from './assets.js?v=202611220247';
+import { CONFIG } from './config.js?v=202611252303';
+import { Enemy } from './enemy.js?v=202611252303';
+import { SOFT } from './zee.js?v=202611252303';
+import { sfx } from './sfx.js?v=202611252303';
+import { drawAnim } from './assets.js?v=202611252303';
 
 const E = CONFIG.enemy;
 
@@ -257,11 +257,10 @@ export class Game {
       this._text(z.x, z.y, 88, '+' + got + ' HP', '#8be28b');
       this._burst(z.x, z.y, 36, 12, ['#8be28b', '#ffffff'], 140, 'spark'); sfx.coffee();
     }
-    this.items = this.items.filter((it) => !it.gone && it.t < K.life);
+    this.items = this.items.filter((it) => !it.gone);               // a coffee never vanishes: it waits until Zee drinks it
   }
   // an iced coffee drawn in code: clear cup, milk and coffee, ice cubes, lid and an orange straw, glowing and bobbing
   _drawItem(ctx, it) {
-    if (CONFIG.coffee.life - it.t < 3 && Math.floor(it.t * 9) % 2 === 0) return;      // about to vanish: blinks
     const bob = it.z + (it.z <= 0 ? 4 + Math.sin(it.t * 5) * 1.6 : 4), x = Math.round(it.x), y = Math.round(it.y - bob);
     ctx.globalAlpha = 0.5; ctx.drawImage(SOFT, it.x - 8, it.y - 2.5, 16, 5);
     ctx.globalAlpha = 0.18 + 0.12 * (0.5 + 0.5 * Math.sin(it.t * 6)); ctx.fillStyle = '#9dfbff';
