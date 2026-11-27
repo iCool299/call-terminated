@@ -1,5 +1,5 @@
-# Makes every makeup-idle frame look EXACTLY like Zee's idle: the frame starts as the idle's own first frame, and only the parts that move
-# during the makeup (arms, hands, compact, lipstick, a small head tilt) are taken from the generated makeup strip.
+# Keeps Zee's makeup idle consistent with her idle: her legs (and the first and last frame) are the idle's own pixels, the upper body
+# (head, jacket, arms, compact, lipstick) comes from the makeup strip, plus any moving part that reaches below the hips.
 # "Moving parts" = the pixels where a makeup frame differs from the makeup strip's own first frame (her resting pose), grown by a few pixels.
 # Runs after build-zee.ps1 (it calls this), on the built strips in assets/characters/zee.
 $ErrorActionPreference = 'Stop'
@@ -37,6 +37,9 @@ public static class MakeupFix {
         for (int i = 0; i < hip * cw; i++) if (mask[i] && !keep[i]) { keep[i] = true; stack.Push(i); }
         while (stack.Count > 0) { int i = stack.Pop(); int x = i % cw; foreach (int j in new[] { i - 1, i + 1, i - cw, i + cw }) { if (j < 0 || j >= cw * ch) continue; if ((j == i - 1 && x == 0) || (j == i + 1 && x == cw - 1)) continue; if (mask[j] && !keep[j]) { keep[j] = true; stack.Push(j); } } }
         mask = keep; }
+      // the whole upper body (head, jacket, arms) comes from the makeup drawing so the arms join the body naturally; legs stay the idle's.
+      // The first and last frames stay pure idle so the switch in and out never pops.
+      if (f > 0 && f < frames - 1) for (int i = 0; i < hip * cw; i++) mask[i] = true;
       // grow the mask so the edges of the moving parts come along with them
       for (int g = 0; g < grow; g++) { var m2 = (bool[])mask.Clone(); for (int y = 1; y < ch - 1; y++) for (int x = 1; x < cw - 1; x++) { int i = y * cw + x; if (mask[i]) continue; if (mask[i - 1] || mask[i + 1] || mask[i - cw] || mask[i + cw]) m2[i] = true; } mask = m2; }
       int n = 0, ox = (f % mkCols) * cw, oy = (f / mkCols) * ch;

@@ -70,6 +70,6 @@ zee.view = side/front/back (zee.js _dir() falls back to the side animation when 
 Masters: sprites/zee/master/zee_master_front_v1.png, _back_v1.png. All 10 moves exist front and back (idle, idle_makeup, walk, run, jump, punch_1-3, jump_kick, dodge); raw sheets sprites/zee/raw/<move>_front_v1.png / _back_v1.png, sizes in tools/zee-views.json (matched to the side view by hair size and height). Special, hurt, knockdown, get up, victory, interact and prone stay side view. Front/back attacks hit along the floor depth (game.js _zeeAttacks). Enemies get four directions later, when the user asks.
 
 ## Zee redo (2026-11-27)
-- Makeup idle in every view was rebuilt FROM the idle frame of that view (ref = first idle cell, only arms/hands/props move): idle_makeup_v5.png (side), idle_makeup_front_v2.png, idle_makeup_back_v2.png. Built at the idle's height and baseline; ShiftX lines up the legs (zee-sheets.ps1).
+- Makeup idle (all views): drawn from the idle frame of each view; tools/makeup-from-idle.ps1 (run by build-zee) keeps the idle legs + first/last frame and takes the upper body from the makeup strip. Back idle redone 2026-11-27 (idle_back_v2: arms down, full build) and back makeup from it (idle_makeup_back_v3).
 - dodge_front_v2: a real floor somersault toward the camera.
 - Front/back punches use both hands: punch_1 = left jab, punch_2 = right cross, punch_3 = two-fisted double punch (punch_*_front_v2 / _back_v2). Sizes in tools/zee-views.json.
