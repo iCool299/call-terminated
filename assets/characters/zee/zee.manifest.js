@@ -17,6 +17,16 @@
                                 "frames":  12,
                                 "cols":  8
                             },
+                   "idle_front":  {
+                                      "file":  "zee_idle_front.png",
+                                      "frames":  12,
+                                      "cols":  8
+                                  },
+                   "idle_back":  {
+                                     "file":  "zee_idle_back.png",
+                                     "frames":  12,
+                                     "cols":  8
+                                 },
                    "idle_makeup":  {
                                        "file":  "zee_idle_makeup.png",
                                        "frames":  16,
@@ -106,6 +116,20 @@
                                     "fps":  10,
                                     "loop":  true
                                 },
+                       "idle_front":  {
+                                          "strip":  "idle_front",
+                                          "from":  0,
+                                          "to":  11,
+                                          "fps":  10,
+                                          "loop":  true
+                                      },
+                       "idle_back":  {
+                                         "strip":  "idle_back",
+                                         "from":  0,
+                                         "to":  11,
+                                         "fps":  10,
+                                         "loop":  true
+                                     },
                        "idle_makeup":  {
                                            "strip":  "idle_makeup",
                                            "from":  0,

@@ -1,9 +1,9 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611271342';
-import { Enemy } from './enemy.js?v=202611271342';
-import { SOFT } from './zee.js?v=202611271342';
-import { sfx } from './sfx.js?v=202611271342';
-import { drawAnim } from './assets.js?v=202611271342';
+import { CONFIG } from './config.js?v=202611271446';
+import { Enemy } from './enemy.js?v=202611271446';
+import { SOFT } from './zee.js?v=202611271446';
+import { sfx } from './sfx.js?v=202611271446';
+import { drawAnim } from './assets.js?v=202611271446';
 
 const E = CONFIG.enemy;
 
@@ -331,7 +331,7 @@ export class Game {
       t.setTransform(1, 0, 0, 1, 0, 0); t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, T.width, T.height);
       t.setTransform(1, 0, 0, -1, 190 - x, y);                                    // mirror around the feet (y), centred on x
       const fade = c.state === 'spawn' ? 1 - c.spawnT / 0.5 : 1;
-      drawAnim(t, c.character, c.anim, c.frame, x, y - lift, c.face, fade);
+      drawAnim(t, c.character, c.anim, c.frame, x, y - lift, /_(front|back)$/.test(c.anim.name) ? 1 : c.face, fade);
       t.setTransform(1, 0, 0, 1, 0, 0); t.globalCompositeOperation = 'destination-in';
       const g = t.createLinearGradient(0, 0, 0, 140); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); t.fillStyle = g; t.fillRect(0, 0, T.width, 180);
       ctx.save(); ctx.globalAlpha = k; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(T, x - 190, y + 1); ctx.restore();

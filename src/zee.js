@@ -1,9 +1,11 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611271342';
-import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611271342';
+import { CONFIG } from './config.js?v=202611271446';
+import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611271446';
 
 const C = CONFIG.zee;
+// Front and back sheets are drawn as seen by the camera, so they are never mirrored (her badge and hand stay on the correct side).
+export const faceFor = (anim, face) => (/_(front|back)$/.test(anim.name) ? 1 : face);
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
 
 // A soft round shadow blob, drawn once and reused for Zee's contact shadow and the paper shadows (no per-frame gradients).
@@ -36,6 +38,7 @@ export class Zee {
     this.trail = [];              // recent positions (newest first) for the blur ghosts
     this._trailT = 0; this._key = ''; this.smear = null;
     this.state = 'idle';
+    this.view = 'side';          // which way she is turned: 'side', 'front' or 'back'
     this.idleTime = 0;
     this.queued = false;
     this.phase = '';
@@ -102,6 +105,10 @@ export class Zee {
   }
 
   // ---------- animation helpers ----------
+  // The version of an animation for the way she is turned ('side', 'front' = facing the camera, 'back' = facing away).
+  // Falls back to the side version while a front / back sheet doesn't exist yet.
+  _dir(base) { const n = base + '_' + this.view; return this.view !== 'side' && this.anims[n] ? n : base; }
+
   _play(name) {
     if (this.anim && name !== this.animName) this.xfade = { anim: this.anim, frame: this.frame, t: 0 };     // blend out of the previous animation
     this.anim = this.anims[name]; this.animName = name; this.t = 0;
@@ -182,7 +189,7 @@ export class Zee {
     this.state = state; this.phase = ''; this.queued = false; this.idleTime = 0;
     if (state !== 'down' && state !== 'getup' && state !== 'defeat') this.prone = false;
     if (state === 'attack') this.attackId++;
-    if (state === 'idle') this._play('idle');
+    if (state === 'idle') this._play(this._dir('idle'));
     else if (anim) this._play(anim);
   }
 
@@ -228,17 +235,19 @@ export class Zee {
       this.x += a.x * speed * dt;
       this.y += a.y * speed * C.depthSpeedFactor * dt;
       if (Math.abs(a.x) > 0.05) this.face = a.x > 0 ? 1 : -1;
-      const want = running ? 'run' : 'walk';
-      if (this.state !== want) { this.state = want; this._play(want); }
+      // mostly up the screen = facing away, mostly down = facing the camera, any real sideways push = side view; kept when she stops
+      if (Math.abs(a.y) > Math.abs(a.x) * 1.4) this.view = a.y > 0 ? 'front' : 'back'; else if (Math.abs(a.x) > 0.05) this.view = 'side';
+      const want = running ? 'run' : 'walk', clip = this._dir(want);
+      if (this.state !== want || this.animName !== clip) { this.state = want; this._play(clip); }
       this.idleTime = 0;
     } else {
-      if (this.state === 'walk' || this.state === 'run') { this.state = 'idle'; this._play('idle'); }
+      if (this.state === 'walk' || this.state === 'run') { this.state = 'idle'; this._play(this._dir('idle')); }
       if (this.state === 'idle') {
         this.idleTime += dt;
         // start the makeup at the top of the idle loop (no pop mid-sway)
-        if (this.idleTime > C.makeupIdleDelay && this.frame === 0) { this.state = 'makeup'; this._play('idle_makeup'); }
+        if (this.idleTime > C.makeupIdleDelay && this.frame === 0 && (this.view === 'side' || this.anims['idle_makeup_' + this.view])) { this.state = 'makeup'; this._play(this._dir('idle_makeup')); }
       } else if (this.state === 'makeup' && this.done) {
-        this.state = 'idle'; this.idleTime = 0; this._play('idle');
+        this.state = 'idle'; this.idleTime = 0; this._play(this._dir('idle'));
       }
     }
     if (Math.abs(this.vx) > 1) { this.x += this.vx * dt; this.vx *= Math.pow(0.02, dt); } else this.vx = 0;
@@ -366,26 +375,26 @@ export class Zee {
     if (this.blur > 0.06) {
       for (let i = 0; i < TRAIL_LAGS.length; i++) {
         const h = this.trail[TRAIL_LAGS[i]];
-        if (h) drawAnim(ctx, this.character, h.anim, h.frame, h.x, h.y - h.lift, h.face, TRAIL_ALPHA[i] * this.blur);
+        if (h) drawAnim(ctx, this.character, h.anim, h.frame, h.x, h.y - h.lift, faceFor(h.anim, h.face), TRAIL_ALPHA[i] * this.blur);
       }
     }
     // swing / roll smear: the previous frame lingers for a moment, which blurs fast poses together
     // animation switch: the previous pose dissolves under the new one for a moment (no pop in size or position)
     const xf = this.xfade;
-    if (xf && !['held', 'thrown'].includes(this.state)) drawAnim(ctx, this.character, xf.anim, xf.frame, x, y - lift, this.face, 0.55 * (1 - xf.t / XFADE_TIME));
+    if (xf && !['held', 'thrown'].includes(this.state)) drawAnim(ctx, this.character, xf.anim, xf.frame, x, y - lift, faceFor(xf.anim, this.face), 0.55 * (1 - xf.t / XFADE_TIME));
     const s = this.smear;
     if (s && s.t < SMEAR_TIME && (SMEAR_STATES.has(this.state) || this.animName === 'jump_kick')) {
-      drawAnim(ctx, this.character, s.anim, s.frame, x, y - lift, this.face, 0.32 * (1 - s.t / SMEAR_TIME));
+      drawAnim(ctx, this.character, s.anim, s.frame, x, y - lift, faceFor(s.anim, this.face), 0.32 * (1 - s.t / SMEAR_TIME));
     }
     // soft pulse while invulnerable after a hit (she never vanishes completely)
     const blink = this.flash <= 0 && this.invuln > 0 && this.state !== 'dodge';
     // invulnerable: she stays fully solid with a gentle white glow pulsing over her (no see-through blinking)
-    drawAnim(ctx, this.character, this.anim, this.frame, x, y - lift, this.face, 1, this.flash * 6, blink ? 0.14 + 0.12 * Math.cos(this.invuln * 14) : 0);
+    drawAnim(ctx, this.character, this.anim, this.frame, x, y - lift, faceFor(this.anim, this.face), 1, this.flash * 6, blink ? 0.14 + 0.12 * Math.cos(this.invuln * 14) : 0);
     this._drawPapers(ctx);
   }
 
   _drawShadow(ctx, x, y, lift) {
-    drawShadow(ctx, this.character, this.anim, this.frame, x, y, lift, this.face, this.state === 'down' || this.state === 'getup' || this.state === 'defeat');
+    drawShadow(ctx, this.character, this.anim, this.frame, x, y, lift, faceFor(this.anim, this.face), this.state === 'down' || this.state === 'getup' || this.state === 'defeat');
   }
 
   _drawPapers(ctx) {

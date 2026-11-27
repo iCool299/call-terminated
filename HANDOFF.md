@@ -64,3 +64,8 @@ After any work, add a dated line under "Decisions and changes" and adjust "Next 
 
 ## Zee re-skin (v4)
 Zee now has brown wavy shoulder-length hair (no hijab). Master: sprites/zee/master/zee_master_idle_v2.png. All 18 sheets are *_v4.png, made by attaching the new master + the old sheet to ChatGPT and asking for the same grid/poses with only the head changed. Navy/sporty grab sheets were re-skinned the same way. HUD portrait was rebuilt from the master head.
+
+## Zee four directions (2026-11-27)
+zee.view = side/front/back (zee.js _dir() falls back to the side animation when <name>_front/_back is missing; front/back are never mirrored).
+Masters: sprites/zee/master/zee_master_front_v1.png, _back_v1.png. Done: idle_front, idle_back. TODO (front+back): walk, run, idle_makeup, jump, punch_1, punch_2, punch_3, jump_kick, dodge (18 sheets).
+Prompt: attach view master + the side sheet, ask for the same grid/frames drawn from that view. ChatGPT is on Free: about 3 images a day. Enemies get four directions later, when the user asks.

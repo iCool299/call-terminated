@@ -4,6 +4,8 @@
 # bigger head for the body, so matching only one of them made her shrink or grow; halfway keeps both changes small and smooth.
 $sheets = @(
     (Cfg 'idle'        'idle_v4.png'        12 3 323),
+    (Cfg 'idle_front'  'idle_front_v1.png'  12 3 -1),     # facing the camera   (-1: scaled so its first frame stands as tall as the side idle)
+    (Cfg 'idle_back'   'idle_back_v1.png'   12 3 -1),     # facing away
     (Cfg 'idle_makeup' 'idle_makeup_v4.png' 16 4 282),
     (Cfg 'walk'        'walk_v4.png'        12 3 311),
     (Cfg 'run'         'run_v4.png'         12 3 347),
