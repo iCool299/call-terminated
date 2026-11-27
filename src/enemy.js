@@ -1,8 +1,8 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611280008';
-import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611280008';
+import { CONFIG } from './config.js?v=202611280145';
+import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611280145';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -32,6 +32,7 @@ const ACCEL = 560;                                                // px/s^2: ene
 
 // running: starts when it is further than RUN_FROM px from its spot by her, stops inside RUN_UNTIL; RUN_SPEED = x walking pace, RUN_STEP = x stride length
 const RUN_FROM = 230, RUN_UNTIL = 120, RUN_SPEED = 1.9, RUN_STEP = 1.7;
+const KD_LIFT = 0.2;                     // knockdown arc height, as a share of the character's height
 const CLAMP_DX = { navy: 52, sporty: 48 };
 const RELEASE = { navy: { dx: 92, z: 78 }, sporty: { dx: 58, z: 46 } };
 
@@ -359,6 +360,10 @@ export class Enemy {
     const ch = this.character, lying = this.state === 'down' || this.state === 'dead' || this.animName === 'get_up';
     const face = this.view === 'side' ? this.face : 1, lean = this.view === 'side' ? this.style.lean : 0;   // front / back sprites are never mirrored and do not lean
     drawShadow(ctx, ch, this.anim, this.frame, x, y, 0, face, lying, fade);          // the one shared character shadow
+    if (this.animName === 'knockdown' && this.anim.frames > 2) {      // knocked off his feet: the flying frames arc up off the floor, landing on the slam frame
+      const u = Math.min(1, this.t / this.anim.starts[2]);
+      y -= KD_LIFT * (ch.manifest.gameHeight || 140) * Math.sin(u * Math.PI);
+    }
     if (this.leanK > 0.01 && !lying) {                          // each enemy's walking style: forward lean, body roll and mid-step lift
       const S = this.style, k = this.leanK, roll = S.sway * Math.sin(this.stride * 2 * Math.PI) * k;
       const lift = S.bounce * Math.abs(Math.sin(this.stride * Math.PI)) * k;
