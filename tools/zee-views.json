@@ -4,7 +4,7 @@
  "jump_front": -1,
  "punch_1_front": 435,
  "punch_2_front": 435,
- "punch_3_front": 428,
+ "punch_3_front": 378,
  "jump_kick_front": 477,
  "dodge_front": 344,
  "walk_back": 362,
@@ -12,7 +12,7 @@
  "jump_back": -1,
  "punch_1_back": 416,
  "punch_2_back": 416,
- "punch_3_back": 364,
+ "punch_3_back": 355,
  "jump_kick_back": 430,
  "dodge_back": -1
 }
