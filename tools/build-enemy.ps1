@@ -16,13 +16,15 @@ if ($e.cell) { $cw = $e.cell[0]; $ch = $e.cell[1] }       # grabbers get a talle
 [Zee2.Pipe]::Prefix = "${Id}_"
 
 $sheets = @()
-foreach ($s in (Get-EnemySheets $e.grab $(if ($e.wRows) { $e.wRows } else { 3 }) ([bool]$e.flex))) {
+$sheetList = if ($e.v2) { Get-EnemySheetsV2 $e.grab ([bool]$e.flex) } else { Get-EnemySheets $e.grab $(if ($e.wRows) { $e.wRows } else { 3 }) ([bool]$e.flex) }
+foreach ($s in $sheetList) {
     $raw = "sprites\agents\raw\${Id}_$($s.name).png"
     if (-not (Test-Path (Join-Path $root $raw))) { Write-Host "missing $raw - skipped"; continue }
     $c = New-Object Zee2.SheetCfg
     $c.Name = $s.name; $c.Path = $raw; $c.N = $s.n; $c.Rows = $s.rows; $c.StandH = -1      # -1 = calibrate from the neutral first frame
     if ($s.feet) { $c.FeetAnchor = $true }
     if ($s.median) { $c.StandH = 0 }                                                          # 0 = scale by the median frame height (walk sheets have no standing frame)
+    if ($s.standH) { $c.StandH = $s.standH }                                                  # explicit standing height (source px) when frame 1 can't calibrate it
     $anchFile = Join-Path $PSScriptRoot "anchors-$Id-$($s.name).txt"                          # optional per-frame x anchors (source px), one per line, blank = auto
     if (Test-Path $anchFile) { $c.Anchors = @(Get-Content $anchFile | ForEach-Object { if ($_.Trim() -eq '') { [double]::NaN } else { [double]$_ } }) }
     $sheets += $c
@@ -48,7 +50,8 @@ $have = @($sheets | % { $_.Name })
 $strips = [ordered]@{}
 foreach ($s in $sheets) { $strips[$s.Name] = [ordered]@{ file = "${Id}_$($s.Name).png"; frames = $s.N; cols = [Math]::Min($s.N, [Zee2.Pipe]::MAX_COLS) } }
 $anims = [ordered]@{}
-foreach ($a in (Get-EnemyAnims $e.grab ($have -contains 'w') ($have -contains 'f'))) {
+$animList = if ($e.v2) { Get-EnemyAnimsV2 $e.grab $have } else { Get-EnemyAnims $e.grab ($have -contains 'w') ($have -contains 'f') }
+foreach ($a in $animList) {
     if ($have -notcontains $a.strip) { continue }
     $x = [ordered]@{ strip = $a.strip; from = $a.from; to = $a.to; fps = $a.fps; loop = [bool]$a.loop }
     if ($a.pingpong) { $x.pingpong = $true }

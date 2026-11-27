@@ -1,8 +1,8 @@
 // Enemy: a fighter with a small brain. It lines up with Zee, flanks, chains combos, sidesteps her swings, punishes her recovery,
 // throws call-centre headsets, and (navy + sporty, the "heavies") grabs and throws her.
 // Art comes from assets/characters/<id>/ ; every enemy shares this one brain.
-import { CONFIG } from './config.js?v=202611272112';
-import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611272112';
+import { CONFIG } from './config.js?v=202611280008';
+import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611280008';
 
 const E = CONFIG.enemy;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -30,6 +30,8 @@ const WALK_STYLE = {
 };
 const ACCEL = 560;                                                // px/s^2: enemies speed up and slow down instead of snapping
 
+// running: starts when it is further than RUN_FROM px from its spot by her, stops inside RUN_UNTIL; RUN_SPEED = x walking pace, RUN_STEP = x stride length
+const RUN_FROM = 230, RUN_UNTIL = 120, RUN_SPEED = 1.9, RUN_STEP = 1.7;
 const CLAMP_DX = { navy: 52, sporty: 48 };
 const RELEASE = { navy: { dx: 92, z: 78 }, sporty: { dx: 58, z: 46 } };
 
@@ -58,9 +60,9 @@ export class Enemy {
     this._play('idle');
   }
 
-  // idle and walk have front / back versions when the enemy has them (base = 'idle' / 'walk', animName = the real one); every other move is side-on
+  // idle, walk and run have front / back versions when the enemy has them (base = 'idle' / 'walk' / 'run', animName = the real one); every other move is side-on
   _play(name) {
-    if (name !== 'idle' && name !== 'walk') this.view = 'side';
+    if (name !== 'idle' && name !== 'walk' && name !== 'run') this.view = 'side';
     const real = this.view !== 'side' && this.anims[name + '_' + this.view] ? name + '_' + this.view : name;
     this.anim = this.anims[real]; this.animName = real; this.base = name; this.t = 0;
   }
@@ -96,7 +98,7 @@ export class Enemy {
 
   update(dt, g) {
     const rate = this.state === 'attack' ? this.atkRate : this.base === 'idle' ? (this.style.idle || 1) : 1;
-    if (this.state !== 'whiff' && this.base !== 'walk') this.t += dt * rate;   // the walk loop is advanced by distance walked (see _stride)
+    if (this.state !== 'whiff' && !(this.base === 'walk' || this.base === 'run')) this.t += dt * rate;   // the walk loop is advanced by distance walked (see _stride)
     this.flash = Math.max(0, this.flash - dt);
     this.tellT = Math.max(0, this.tellT - dt); this.squash = Math.max(0, this.squash - dt * 6);
     // body hits the floor (knockdown / KO): dust cloud once
@@ -130,8 +132,8 @@ export class Enemy {
 
   // Advance the walk loop by the distance covered (negative = walking backwards): one step = one pass through the 12-frame loop.
   _stride(d) {
-    const dur = this.anim.duration;
-    this.stride = (((this.stride + d / this.stepLen) % 1) + 1) % 1;
+    const dur = this.anim.duration, len = this.base === 'run' ? this.stepLen * RUN_STEP : this.stepLen;   // running strides are longer
+    this.stride = (((this.stride + d / len) % 1) + 1) % 1;
     this.t = this.stride * dur;
   }
   // Ease the velocity toward a target (no sudden starts, stops or reversals).
@@ -193,7 +195,7 @@ export class Enemy {
       const wait = g.attackerCount() >= g.maxAttackers && !this.attacking && this.side !== behind;   // the attack slots are full: hover just outside her reach (backstabbers never wait)
       let mx = 0, my = 0;
       if (calm) {                                                     // she is beaten: step back off her body and stand around her
-        this.mx = adx < 70 ? -sgn(dx || 1) * 0.6 : 0; this.my = 0;
+        this.mx = adx < 70 ? -sgn(dx || 1) * 0.6 : 0; this.my = 0; this.running = false;
       }
       else {
         const tx = z.x + this.side * (wait ? E.attackRange + 34 : E.attackRange * 0.8);
@@ -201,7 +203,10 @@ export class Enemy {
         if (mySide !== this.side && adx < 95) ty = z.y + (this.lane || (this.lane = (Math.random() < 0.5 ? -1 : 1))) * 34;   // going round her: swing out in depth first
         else this.lane = 0;
         const ex = tx - this.x, ey = ty - this.y;
-        if (Math.abs(ex) > 7) mx = sgn(ex) * (Math.abs(ex) > 170 ? 1.3 : 1);                            // charge in from afar
+        if (!this.anims.run) this.running = false;
+        else if (Math.abs(ex) > RUN_FROM) this.running = true;                                           // far off: run at her
+        else if (Math.abs(ex) < RUN_UNTIL) this.running = false;                                        // close: drop back to a walk
+        if (Math.abs(ex) > 7) mx = sgn(ex) * (this.running ? RUN_SPEED : Math.abs(ex) > 170 ? 1.3 : 1);   // charge in from afar
         if (Math.abs(ey) > 5) my = sgn(ey) * (mySide !== this.side ? 1.2 : 0.85);
         this.mx = mx; this.my = my;
       }
@@ -225,7 +230,8 @@ export class Enemy {
       const px = this.x, py = this.y;
       this.x += this.vw * dt; this.y += this.vh * dt;
       this.still = 0;
-      if (this.state !== 'walk') { this.state = 'walk'; this._play('walk'); this.t = this.stride * this.anim.duration; }
+      const gait = this.running && this.anims.run ? 'run' : 'walk';
+      if (this.state !== 'walk' || this.base !== gait) { this.state = 'walk'; this._play(gait); this.t = this.stride * this.anim.duration; }
       this._turnView();
       const d = Math.hypot(this.x - px, this.y - py);
       this._stride(d * (this.view !== 'side' || Math.abs(this.vw) < 14 || sgn(this.vw) === this.face ? 1 : -1));      // backwards only while turning round
