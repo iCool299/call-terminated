@@ -29,8 +29,6 @@ $log | Out-File (Join-Path $dbg "zee-build$Suffix.log") -Encoding utf8
 $mk = @($sheets | Where-Object { $_.Name -like 'idle_makeup*' })
 if ($mk.Count) { [Zee2.Pipe]::Run($root, $master, $out, '', $mk, 32, @(0xF2C94C, 0xD49A2A, 0x8A5A1A, 0xD8283C, 0x8E1A2A)) | Out-Null }
 
-# Makeup idles: keep the idle's own pixels, take only the moving arms / props from the makeup strips (so she looks exactly like her idle)
-& (Join-Path $PSScriptRoot 'makeup-from-idle.ps1')
 
 # Manifest
 $strips = [ordered]@{}
