@@ -4,8 +4,8 @@
 # bigger head for the body, so matching only one of them made her shrink or grow; halfway keeps both changes small and smooth.
 $sheets = @(
     (Cfg 'idlemk'      'idlemk_side_v1.png' 16 4 -1),     # row 1 = idle breathing loop, rows 2-4 = makeup; ONE drawing so both are the same size and look
-    (Cfg 'walk'        'walk_v4.png'        12 3 311),
-    (Cfg 'run'         'run_v4.png'         12 3 347),
+    (Cfg 'walk'        'walk_v5.png'        12 3 328),
+    (Cfg 'run'         'run_v5.png'         12 3 382),
     (Cfg 'jump'        'jump_v4.png'        12 3 327),
     (Cfg 'punch_1'     'punch_1_v4.png'     10 2 359),
     (Cfg 'punch_2'     'punch_2_v4.png'     10 2 350),
@@ -23,16 +23,16 @@ $sheets = @(
 ($sheets | Where-Object { $_.Name -eq 'knockdown' }).FrameMul = [double[]]@(1.226, 1.216, 1.206, 1.166, 1.186, 1.136, 1.146, 1.146, 1.136, 1.106, 1.086, 1.116)
 # front / back sheets. StandH per sheet comes from tools/zee-views.json (-1 = the first frame stands as tall as the side idle)
 $views = Get-Content (Join-Path $PSScriptRoot 'zee-views.json') -Raw | ConvertFrom-Json
-$sheets += (Cfg 'walk_front' 'walk_front_v1.png' 12 3 ([double]$views.'walk_front'))
-$sheets += (Cfg 'run_front' 'run_front_v1.png' 12 3 ([double]$views.'run_front'))
+$sheets += (Cfg 'walk_front' 'walk_front_v2.png' 12 3 ([double]$views.'walk_front'))
+$sheets += (Cfg 'run_front' 'run_front_v2.png' 12 3 ([double]$views.'run_front'))
 $sheets += (Cfg 'jump_front' 'jump_front_v1.png' 12 3 ([double]$views.'jump_front'))
 $sheets += (Cfg 'punch_1_front' 'punch_1_front_v2.png' 10 2 ([double]$views.'punch_1_front'))
 $sheets += (Cfg 'punch_2_front' 'punch_2_front_v2.png' 10 2 ([double]$views.'punch_2_front'))
 $sheets += (Cfg 'punch_3_front' 'punch_3_front_v2.png' 12 3 ([double]$views.'punch_3_front'))
 $sheets += (Cfg 'jump_kick_front' 'jump_kick_front_v1.png' 8 2 ([double]$views.'jump_kick_front'))
 $sheets += (Cfg 'dodge_front' 'dodge_front_v2.png' 12 3 ([double]$views.'dodge_front'))
-$sheets += (Cfg 'walk_back' 'walk_back_v1.png' 12 3 ([double]$views.'walk_back'))
-$sheets += (Cfg 'run_back' 'run_back_v1.png' 12 3 ([double]$views.'run_back'))
+$sheets += (Cfg 'walk_back' 'walk_back_v2.png' 12 3 ([double]$views.'walk_back'))
+$sheets += (Cfg 'run_back' 'run_back_v2.png' 12 3 ([double]$views.'run_back'))
 $sheets += (Cfg 'jump_back' 'jump_back_v1.png' 12 3 ([double]$views.'jump_back'))
 $sheets += (Cfg 'punch_1_back' 'punch_1_back_v2.png' 10 2 ([double]$views.'punch_1_back'))
 $sheets += (Cfg 'punch_2_back' 'punch_2_back_v2.png' 10 2 ([double]$views.'punch_2_back'))

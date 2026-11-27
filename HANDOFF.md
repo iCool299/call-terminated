@@ -73,3 +73,4 @@ Masters: sprites/zee/master/zee_master_front_v1.png, _back_v1.png. All 10 moves 
 - Idle + makeup idle (all views) come from ONE drawing per view: sprites/zee/raw/idlemk_side_v1.png, idlemk_front_v1.png, idlemk_back_v2.png (16 frames: row 1 = idle breathing loop -> anim idle 0-3; rows 2-4 = makeup -> anim idle_makeup 4-15, ending in the idle pose). Same size and look by construction. The separate idle/makeup sheets and makeup-from-idle.ps1 are gone.
 - dodge_front_v2: a real floor somersault toward the camera.
 - Front/back punches use both hands: punch_1 = left jab, punch_2 = right cross, punch_3 = two-fisted double punch (punch_*_front_v2 / _back_v2). Sizes in tools/zee-views.json.
+- Walk + run (all views) redrawn 2026-11-27 in the idle's style (thin lines, same head/shoe size), poses kept from the old sheets: walk_v5, run_v5, walk_front_v2, run_front_v2, walk_back_v2, run_back_v2. Sizes matched to the idle by head size.

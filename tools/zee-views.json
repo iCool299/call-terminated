@@ -1,5 +1,5 @@
 {
- "walk_front": 381,
+ "walk_front": 366,
  "run_front": 390,
  "jump_front": -1,
  "punch_1_front": 435,
@@ -7,7 +7,7 @@
  "punch_3_front": 428,
  "jump_kick_front": 477,
  "dodge_front": 344,
- "walk_back": 375,
+ "walk_back": 369,
  "run_back": 336,
  "jump_back": -1,
  "punch_1_back": 416,
