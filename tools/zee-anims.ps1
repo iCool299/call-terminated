@@ -2,8 +2,6 @@
 # 'active' = frames that can hit, 'iframes' = invulnerable frames, loopFrom = frame a looping animation returns to.
 $anims = @(
     @{ name='idle';        strip='idle';        from=0; to=11; fps=10; loop=$true },
-    @{ name='idle_front';  strip='idle_front';  from=0; to=11; fps=10; loop=$true },
-    @{ name='idle_back';   strip='idle_back';   from=0; to=11; fps=10; loop=$true },
     @{ name='idle_makeup'; strip='idle_makeup'; from=0; to=15; fps=6.5; loop=$false },
     @{ name='walk';        strip='walk';        from=0; to=11; fps=12; loop=$true },
     @{ name='run';         strip='run';         from=0; to=11; fps=22; loop=$true },
@@ -28,3 +26,11 @@ $anims = @(
     @{ name='get_up_prone';strip='prone';       from=10; to=15; fps=12; loop=$false; iframes=@(0,1,2,3,4,5) }
 )
 
+# FRONT (facing the camera) and BACK (facing away): the same timing, hit frames and dodge frames as the side view, on their own strips
+$turn = 'idle','idle_makeup','walk','run','jump_start','jump_rise','jump_fall','jump_land','punch_1','punch_2','punch_3','jump_kick','dodge'
+$base = $anims
+foreach ($v in 'front','back') {
+    foreach ($x in $base) {
+        if ($turn -contains $x.name) { $c = $x.Clone(); $c.name = "$($x.name)_$v"; $c.strip = "$($x.strip)_$v"; $anims += $c }
+    }
+}

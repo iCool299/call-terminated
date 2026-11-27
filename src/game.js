@@ -1,9 +1,9 @@
 // Game world: Zee + enemies, combat resolution, projectiles and all the "juice" (hit flash, sparks, shake, hit-stop, sound).
-import { CONFIG } from './config.js?v=202611271446';
-import { Enemy } from './enemy.js?v=202611271446';
-import { SOFT } from './zee.js?v=202611271446';
-import { sfx } from './sfx.js?v=202611271446';
-import { drawAnim } from './assets.js?v=202611271446';
+import { CONFIG } from './config.js?v=202611271531';
+import { Enemy } from './enemy.js?v=202611271531';
+import { SOFT } from './zee.js?v=202611271531';
+import { sfx } from './sfx.js?v=202611271531';
+import { drawAnim } from './assets.js?v=202611271531';
 
 const E = CONFIG.enemy;
 
@@ -70,10 +70,12 @@ export class Game {
     if (!a) return;
     for (const e of this.enemies) {
       if (e.hitId === a.id) continue;
-      const dx = (e.x - z.x) * z.face;
-      if (dx < -10 || dx > a.reach || Math.abs(e.y - z.y) > 18 || z.z > 90 || !e.canBeHit()) continue;
+      // a side swing reaches sideways along her facing; a front / back swing reaches down / up the floor (depth is foreshortened)
+      if (a.view === 'side') { const dx = (e.x - z.x) * z.face; if (dx < -10 || dx > a.reach || Math.abs(e.y - z.y) > 18) continue; }
+      else { const dy = (e.y - z.y) * (a.view === 'front' ? 1 : -1); if (dy < -6 || dy > a.reach * 0.7 || Math.abs(e.x - z.x) > 34) continue; }
+      if (z.z > 90 || !e.canBeHit()) continue;
       e.hitId = a.id;
-      this._hitEnemy(e, a.dmg, z.face, a.knock);
+      this._hitEnemy(e, a.dmg, a.view === 'side' ? z.face : (e.x >= z.x ? 1 : -1), a.knock);
     }
     // (papers are resolved below)
   }

@@ -67,5 +67,4 @@ Zee now has brown wavy shoulder-length hair (no hijab). Master: sprites/zee/mast
 
 ## Zee four directions (2026-11-27)
 zee.view = side/front/back (zee.js _dir() falls back to the side animation when <name>_front/_back is missing; front/back are never mirrored).
-Masters: sprites/zee/master/zee_master_front_v1.png, _back_v1.png. Done: idle_front, idle_back. TODO (front+back): walk, run, idle_makeup, jump, punch_1, punch_2, punch_3, jump_kick, dodge (18 sheets).
-Prompt: attach view master + the side sheet, ask for the same grid/frames drawn from that view. ChatGPT is on Free: about 3 images a day. Enemies get four directions later, when the user asks.
+Masters: sprites/zee/master/zee_master_front_v1.png, _back_v1.png. All 10 moves exist front and back (idle, idle_makeup, walk, run, jump, punch_1-3, jump_kick, dodge); raw sheets sprites/zee/raw/<move>_front_v1.png / _back_v1.png, sizes in tools/zee-views.json (matched to the side view by hair size and height). Special, hurt, knockdown, get up, victory, interact and prone stay side view. Front/back attacks hit along the floor depth (game.js _zeeAttacks). Enemies get four directions later, when the user asks.

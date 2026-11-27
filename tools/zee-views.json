@@ -1,0 +1,22 @@
+{
+ "idle_front": -1,
+ "idle_makeup_front": -1,
+ "walk_front": 381,
+ "run_front": 416,
+ "jump_front": -1,
+ "punch_1_front": 411,
+ "punch_2_front": 420,
+ "punch_3_front": 382,
+ "jump_kick_front": 477,
+ "dodge_front": 340,
+ "idle_back": -1,
+ "idle_makeup_back": -1,
+ "walk_back": 375,
+ "run_back": 336,
+ "jump_back": -1,
+ "punch_1_back": 403,
+ "punch_2_back": 405,
+ "punch_3_back": 335,
+ "jump_kick_back": 430,
+ "dodge_back": -1
+}

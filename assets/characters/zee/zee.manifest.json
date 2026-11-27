@@ -17,16 +17,6 @@
                                 "frames":  12,
                                 "cols":  8
                             },
-                   "idle_front":  {
-                                      "file":  "zee_idle_front.png",
-                                      "frames":  12,
-                                      "cols":  8
-                                  },
-                   "idle_back":  {
-                                     "file":  "zee_idle_back.png",
-                                     "frames":  12,
-                                     "cols":  8
-                                 },
                    "idle_makeup":  {
                                        "file":  "zee_idle_makeup.png",
                                        "frames":  16,
@@ -106,7 +96,107 @@
                                  "file":  "zee_prone.png",
                                  "frames":  16,
                                  "cols":  8
-                             }
+                             },
+                   "idle_front":  {
+                                      "file":  "zee_idle_front.png",
+                                      "frames":  12,
+                                      "cols":  8
+                                  },
+                   "idle_makeup_front":  {
+                                             "file":  "zee_idle_makeup_front.png",
+                                             "frames":  16,
+                                             "cols":  8
+                                         },
+                   "walk_front":  {
+                                      "file":  "zee_walk_front.png",
+                                      "frames":  12,
+                                      "cols":  8
+                                  },
+                   "run_front":  {
+                                     "file":  "zee_run_front.png",
+                                     "frames":  12,
+                                     "cols":  8
+                                 },
+                   "jump_front":  {
+                                      "file":  "zee_jump_front.png",
+                                      "frames":  12,
+                                      "cols":  8
+                                  },
+                   "punch_1_front":  {
+                                         "file":  "zee_punch_1_front.png",
+                                         "frames":  10,
+                                         "cols":  8
+                                     },
+                   "punch_2_front":  {
+                                         "file":  "zee_punch_2_front.png",
+                                         "frames":  10,
+                                         "cols":  8
+                                     },
+                   "punch_3_front":  {
+                                         "file":  "zee_punch_3_front.png",
+                                         "frames":  12,
+                                         "cols":  8
+                                     },
+                   "jump_kick_front":  {
+                                           "file":  "zee_jump_kick_front.png",
+                                           "frames":  8,
+                                           "cols":  8
+                                       },
+                   "dodge_front":  {
+                                       "file":  "zee_dodge_front.png",
+                                       "frames":  12,
+                                       "cols":  8
+                                   },
+                   "idle_back":  {
+                                     "file":  "zee_idle_back.png",
+                                     "frames":  12,
+                                     "cols":  8
+                                 },
+                   "idle_makeup_back":  {
+                                            "file":  "zee_idle_makeup_back.png",
+                                            "frames":  16,
+                                            "cols":  8
+                                        },
+                   "walk_back":  {
+                                     "file":  "zee_walk_back.png",
+                                     "frames":  12,
+                                     "cols":  8
+                                 },
+                   "run_back":  {
+                                    "file":  "zee_run_back.png",
+                                    "frames":  12,
+                                    "cols":  8
+                                },
+                   "jump_back":  {
+                                     "file":  "zee_jump_back.png",
+                                     "frames":  12,
+                                     "cols":  8
+                                 },
+                   "punch_1_back":  {
+                                        "file":  "zee_punch_1_back.png",
+                                        "frames":  10,
+                                        "cols":  8
+                                    },
+                   "punch_2_back":  {
+                                        "file":  "zee_punch_2_back.png",
+                                        "frames":  10,
+                                        "cols":  8
+                                    },
+                   "punch_3_back":  {
+                                        "file":  "zee_punch_3_back.png",
+                                        "frames":  12,
+                                        "cols":  8
+                                    },
+                   "jump_kick_back":  {
+                                          "file":  "zee_jump_kick_back.png",
+                                          "frames":  8,
+                                          "cols":  8
+                                      },
+                   "dodge_back":  {
+                                      "file":  "zee_dodge_back.png",
+                                      "frames":  12,
+                                      "cols":  8
+                                  }
                },
     "animations":  {
                        "idle":  {
@@ -116,20 +206,6 @@
                                     "fps":  10,
                                     "loop":  true
                                 },
-                       "idle_front":  {
-                                          "strip":  "idle_front",
-                                          "from":  0,
-                                          "to":  11,
-                                          "fps":  10,
-                                          "loop":  true
-                                      },
-                       "idle_back":  {
-                                         "strip":  "idle_back",
-                                         "from":  0,
-                                         "to":  11,
-                                         "fps":  10,
-                                         "loop":  true
-                                     },
                        "idle_makeup":  {
                                            "strip":  "idle_makeup",
                                            "from":  0,
@@ -339,6 +415,240 @@
                                                             4,
                                                             5
                                                         ]
-                                        }
+                                        },
+                       "idle_front":  {
+                                          "strip":  "idle_front",
+                                          "from":  0,
+                                          "to":  11,
+                                          "fps":  10,
+                                          "loop":  true
+                                      },
+                       "idle_makeup_front":  {
+                                                 "strip":  "idle_makeup_front",
+                                                 "from":  0,
+                                                 "to":  15,
+                                                 "fps":  6.5,
+                                                 "loop":  false
+                                             },
+                       "walk_front":  {
+                                          "strip":  "walk_front",
+                                          "from":  0,
+                                          "to":  11,
+                                          "fps":  12,
+                                          "loop":  true
+                                      },
+                       "run_front":  {
+                                         "strip":  "run_front",
+                                         "from":  0,
+                                         "to":  11,
+                                         "fps":  22,
+                                         "loop":  true
+                                     },
+                       "jump_start_front":  {
+                                                "strip":  "jump_front",
+                                                "from":  0,
+                                                "to":  2,
+                                                "fps":  30,
+                                                "loop":  false
+                                            },
+                       "jump_rise_front":  {
+                                               "strip":  "jump_front",
+                                               "from":  3,
+                                               "to":  5,
+                                               "fps":  15,
+                                               "loop":  false
+                                           },
+                       "jump_fall_front":  {
+                                               "strip":  "jump_front",
+                                               "from":  6,
+                                               "to":  8,
+                                               "fps":  15,
+                                               "loop":  false
+                                           },
+                       "jump_land_front":  {
+                                               "strip":  "jump_front",
+                                               "from":  9,
+                                               "to":  11,
+                                               "fps":  26,
+                                               "loop":  false
+                                           },
+                       "punch_1_front":  {
+                                             "strip":  "punch_1_front",
+                                             "from":  0,
+                                             "to":  9,
+                                             "fps":  26,
+                                             "loop":  false,
+                                             "active":  [
+                                                            4,
+                                                            5
+                                                        ]
+                                         },
+                       "punch_2_front":  {
+                                             "strip":  "punch_2_front",
+                                             "from":  0,
+                                             "to":  9,
+                                             "fps":  26,
+                                             "loop":  false,
+                                             "active":  [
+                                                            5,
+                                                            6
+                                                        ]
+                                         },
+                       "punch_3_front":  {
+                                             "strip":  "punch_3_front",
+                                             "from":  0,
+                                             "to":  11,
+                                             "fps":  24,
+                                             "loop":  false,
+                                             "active":  [
+                                                            5,
+                                                            6,
+                                                            7
+                                                        ]
+                                         },
+                       "jump_kick_front":  {
+                                               "strip":  "jump_kick_front",
+                                               "from":  0,
+                                               "to":  7,
+                                               "fps":  20,
+                                               "loop":  false,
+                                               "active":  [
+                                                              4,
+                                                              5
+                                                          ]
+                                           },
+                       "dodge_front":  {
+                                           "strip":  "dodge_front",
+                                           "from":  0,
+                                           "to":  11,
+                                           "fps":  24,
+                                           "loop":  false,
+                                           "iframes":  [
+                                                           2,
+                                                           3,
+                                                           4,
+                                                           5,
+                                                           6,
+                                                           7,
+                                                           8
+                                                       ]
+                                       },
+                       "idle_back":  {
+                                         "strip":  "idle_back",
+                                         "from":  0,
+                                         "to":  11,
+                                         "fps":  10,
+                                         "loop":  true
+                                     },
+                       "idle_makeup_back":  {
+                                                "strip":  "idle_makeup_back",
+                                                "from":  0,
+                                                "to":  15,
+                                                "fps":  6.5,
+                                                "loop":  false
+                                            },
+                       "walk_back":  {
+                                         "strip":  "walk_back",
+                                         "from":  0,
+                                         "to":  11,
+                                         "fps":  12,
+                                         "loop":  true
+                                     },
+                       "run_back":  {
+                                        "strip":  "run_back",
+                                        "from":  0,
+                                        "to":  11,
+                                        "fps":  22,
+                                        "loop":  true
+                                    },
+                       "jump_start_back":  {
+                                               "strip":  "jump_back",
+                                               "from":  0,
+                                               "to":  2,
+                                               "fps":  30,
+                                               "loop":  false
+                                           },
+                       "jump_rise_back":  {
+                                              "strip":  "jump_back",
+                                              "from":  3,
+                                              "to":  5,
+                                              "fps":  15,
+                                              "loop":  false
+                                          },
+                       "jump_fall_back":  {
+                                              "strip":  "jump_back",
+                                              "from":  6,
+                                              "to":  8,
+                                              "fps":  15,
+                                              "loop":  false
+                                          },
+                       "jump_land_back":  {
+                                              "strip":  "jump_back",
+                                              "from":  9,
+                                              "to":  11,
+                                              "fps":  26,
+                                              "loop":  false
+                                          },
+                       "punch_1_back":  {
+                                            "strip":  "punch_1_back",
+                                            "from":  0,
+                                            "to":  9,
+                                            "fps":  26,
+                                            "loop":  false,
+                                            "active":  [
+                                                           4,
+                                                           5
+                                                       ]
+                                        },
+                       "punch_2_back":  {
+                                            "strip":  "punch_2_back",
+                                            "from":  0,
+                                            "to":  9,
+                                            "fps":  26,
+                                            "loop":  false,
+                                            "active":  [
+                                                           5,
+                                                           6
+                                                       ]
+                                        },
+                       "punch_3_back":  {
+                                            "strip":  "punch_3_back",
+                                            "from":  0,
+                                            "to":  11,
+                                            "fps":  24,
+                                            "loop":  false,
+                                            "active":  [
+                                                           5,
+                                                           6,
+                                                           7
+                                                       ]
+                                        },
+                       "jump_kick_back":  {
+                                              "strip":  "jump_kick_back",
+                                              "from":  0,
+                                              "to":  7,
+                                              "fps":  20,
+                                              "loop":  false,
+                                              "active":  [
+                                                             4,
+                                                             5
+                                                         ]
+                                          },
+                       "dodge_back":  {
+                                          "strip":  "dodge_back",
+                                          "from":  0,
+                                          "to":  11,
+                                          "fps":  24,
+                                          "loop":  false,
+                                          "iframes":  [
+                                                          2,
+                                                          3,
+                                                          4,
+                                                          5,
+                                                          6,
+                                                          7,
+                                                          8
+                                                      ]
+                                      }
                    }
 }

@@ -26,7 +26,7 @@ $log = [Zee2.Pipe]::Run($root, $master, $out, '', $sheets, 32, $extras)     # 32
 $log | Out-File (Join-Path $dbg "zee-build$Suffix.log") -Encoding utf8
 # The makeup idle is rebuilt on its own with gold + red palette entries, so the lipstick keeps its gold case and red tip
 # (only this strip gets them, so no stray red/gold speckles appear on the other animations).
-$mk = @($sheets | Where-Object { $_.Name -eq 'idle_makeup' })
+$mk = @($sheets | Where-Object { $_.Name -like 'idle_makeup*' })
 if ($mk.Count) { [Zee2.Pipe]::Run($root, $master, $out, '', $mk, 32, @(0xF2C94C, 0xD49A2A, 0x8A5A1A, 0xD8283C, 0x8E1A2A)) | Out-Null }
 
 # Manifest

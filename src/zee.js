@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611271446';
-import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611271446';
+import { CONFIG } from './config.js?v=202611271531';
+import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611271531';
 
 const C = CONFIG.zee;
 // Front and back sheets are drawn as seen by the camera, so they are never mirrored (her badge and hand stay on the correct side).
@@ -51,10 +51,11 @@ export class Zee {
 
   // ---------- melee hitbox for the current swing (or null) ----------
   attackBox() {
-    const a = C.attacks[this.animName];
+    const a = C.attacks[this.move];
     if (!a || !this.anim.active.includes(this.frame)) return null;
-    if (this.state !== 'attack' && !(this.state === 'jump' && this.animName === 'jump_kick')) return null;
-    return { id: this.attackId, ...a, dmg: Math.round(a.dmg * this.dmgMul) };
+    if (this.state !== 'attack' && !(this.state === 'jump' && this.move === 'jump_kick')) return null;
+    const view = this.anim.name.endsWith('_front') ? 'front' : this.anim.name.endsWith('_back') ? 'back' : 'side';     // which way this swing goes
+    return { view, id: this.attackId, ...a, dmg: Math.round(a.dmg * this.dmgMul) };
   }
 
   // charge the special meter by a share of a full meter (escalation makes it charge faster)
@@ -108,6 +109,12 @@ export class Zee {
   // The version of an animation for the way she is turned ('side', 'front' = facing the camera, 'back' = facing away).
   // Falls back to the side version while a front / back sheet doesn't exist yet.
   _dir(base) { const n = base + '_' + this.view; return this.view !== 'side' && this.anims[n] ? n : base; }
+
+  // the current animation without its _front / _back ending (the name the combat rules use)
+  get move() { return this.animName.replace(/_(front|back)$/, ''); }
+
+  // turn toward a held direction: mostly up = back, mostly down = front, a real sideways push = side (no input keeps the current one)
+  _turn(a) { if (Math.abs(a.y) > 0.2 && Math.abs(a.y) > Math.abs(a.x) * 1.4) this.view = a.y > 0 ? 'front' : 'back'; else if (Math.abs(a.x) > 0.2) this.view = 'side'; }
 
   _play(name) {
     if (this.anim && name !== this.animName) this.xfade = { anim: this.anim, frame: this.frame, t: 0 };     // blend out of the previous animation
@@ -223,9 +230,9 @@ export class Zee {
   _free(dt, input, actions) {
     const a = input.axis;
     for (const act of actions) {
-      if (act === 'jump') return this._startJump();
+      if (act === 'jump') return this._startJump(a);
       if (act === 'light') return this._startAttack('punch_1', a);
-      if (act === 'special' && this.cd.special <= 0) { this.cd.special = C.specialCooldown; return this._startAttack('special', a); }
+      if (act === 'special' && this.cd.special <= 0) { this.cd.special = C.specialCooldown; this.view = 'side'; return this._startAttack('special', { x: a.x, y: 0 }); }
       if (act === 'dodge' && this.cd.dodge <= 0) return this._startDodge(a);
       if (act === 'interact') return this._enter('interact', 'interact');
     }
@@ -256,11 +263,12 @@ export class Zee {
   // ---------- attacks ----------
   _startAttack(name, axis) {
     if (Math.abs(axis.x) > 0.3) this.face = axis.x > 0 ? 1 : -1;
-    this._enter('attack', name);
+    this._turn(axis);
+    this._enter('attack', this._dir(name));
   }
 
   _attack(dt, input, actions) {
-    const name = this.animName;
+    const name = this.move;
     const f = this.frame;
     const lastActive = this.anim.active.length ? Math.max(...this.anim.active) : this.anim.frames - 1;
     // Printout Barrage: spit out paper on every hit frame of the special
@@ -272,13 +280,16 @@ export class Zee {
     // forward step while swinging
     const lunge = C.lunge[name] || 0;
     const st = this.anim.starts;
-    if (lunge && f >= 1 && f <= lastActive) this.x += this.face * (lunge / (st[lastActive + 1] - st[1])) * dt;
+    if (lunge && f >= 1 && f <= lastActive) {
+      const step = (lunge / (st[lastActive + 1] - st[1])) * dt, view = this.anim.name.endsWith('_front') ? 1 : this.anim.name.endsWith('_back') ? -1 : 0;
+      if (view) this.y += view * step * C.depthSpeedFactor; else this.x += this.face * step;
+    }
     const next = name === 'punch_1' ? 'punch_2' : name === 'punch_2' ? 'punch_3' : null;
-    if (this.queued && next && f > lastActive) { this.queued = false; this._enter('attack', next); return; }
+    if (this.queued && next && f > lastActive) { this.queued = false; this._turn(input.axis); this._enter('attack', this._dir(next)); return; }
     // recovery frames can be cancelled into a dodge or jump so the controls never feel stuck
     if (f > lastActive) {
       for (const act of actions) {
-        if (act === 'jump') return this._startJump();
+        if (act === 'jump') return this._startJump(input.axis);
         if (act === 'dodge' && this.cd.dodge <= 0) return this._startDodge(input.axis);
       }
     }
@@ -286,12 +297,12 @@ export class Zee {
   }
 
   // ---------- jump ----------
-  _startJump() { this.state = 'jump'; this.phase = 'start'; this.airKick = false; this._play('jump_start'); }
+  _startJump(axis) { if (axis) this._turn(axis); this.state = 'jump'; this.phase = 'start'; this.airKick = false; this._play(this._dir('jump_start')); }
 
   _jump(dt, input, actions) {
     const a = input.axis;
     if (this.phase === 'start') {
-      if (this.t >= C.jumpStartTime) { this.phase = 'air'; this.vz = C.jumpVelocity; this._play('jump_rise'); }
+      if (this.t >= C.jumpStartTime) { this.phase = 'air'; this.vz = C.jumpVelocity; this._play(this._dir('jump_rise')); }
       return;
     }
     if (this.phase === 'air') {
@@ -301,12 +312,12 @@ export class Zee {
       const speed = (input.run ? C.runSpeed : C.walkSpeed) * C.airControl;
       this.x += a.x * speed * dt; this.y += a.y * speed * C.depthSpeedFactor * dt * 0.7;
       if (Math.abs(a.x) > 0.05) this.face = a.x > 0 ? 1 : -1;
-      if (actions.includes('light') && !this.airKick) { this.airKick = true; this.attackId++; this._play('jump_kick'); }
+      if (actions.includes('light') && !this.airKick) { this.airKick = true; this.attackId++; this._turn(a); this._play(this._dir('jump_kick')); }
       if (!this.airKick) {
-        const want = this.vz > 0 ? 'jump_rise' : 'jump_fall';
+        const want = this._dir(this.vz > 0 ? 'jump_rise' : 'jump_fall');
         if (this.animName !== want) this._play(want);
       }
-      if (this.z <= 0 && this.vz < 0) { this.z = 0; this.vz = 0; this.phase = 'land'; this._play('jump_land'); }
+      if (this.z <= 0 && this.vz < 0) { this.z = 0; this.vz = 0; this.phase = 'land'; this._play(this._dir('jump_land')); }
       return;
     }
     if (this.phase === 'land' && this.done) this._enter('idle');
@@ -316,11 +327,12 @@ export class Zee {
   _startDodge(axis) {
     this.cd.dodge = C.dodgeCooldown;
     let dx = axis.x, dy = axis.y;
-    if (Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) { dx = this.face; dy = 0; }
+    if (Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) { dx = this.view === 'side' ? this.face : 0; dy = this.view === 'front' ? 1 : this.view === 'back' ? -1 : 0; }     // no direction held: roll the way she is turned
     const l = Math.hypot(dx, dy) || 1;
     this.dodgeDir = { x: dx / l, y: dy / l };
     if (Math.abs(dx) > 0.2) this.face = dx > 0 ? 1 : -1;
-    this._enter('dodge', 'dodge');
+    this._turn(this.dodgeDir);
+    this._enter('dodge', this._dir('dodge'));
   }
 
   _dodge(dt) {
@@ -383,7 +395,7 @@ export class Zee {
     const xf = this.xfade;
     if (xf && !['held', 'thrown'].includes(this.state)) drawAnim(ctx, this.character, xf.anim, xf.frame, x, y - lift, faceFor(xf.anim, this.face), 0.55 * (1 - xf.t / XFADE_TIME));
     const s = this.smear;
-    if (s && s.t < SMEAR_TIME && (SMEAR_STATES.has(this.state) || this.animName === 'jump_kick')) {
+    if (s && s.t < SMEAR_TIME && (SMEAR_STATES.has(this.state) || this.move === 'jump_kick')) {
       drawAnim(ctx, this.character, s.anim, s.frame, x, y - lift, faceFor(s.anim, this.face), 0.32 * (1 - s.t / SMEAR_TIME));
     }
     // soft pulse while invulnerable after a hit (she never vanishes completely)
