@@ -41,4 +41,4 @@ $sheets += (Cfg 'jump_kick_back' 'jump_kick_back_v1.png' 8 2 ([double]$views.'ju
 $sheets += (Cfg 'dodge_back' 'dodge_back_v1.png' 12 3 ([double]$views.'dodge_back'))
 
 $sheets += (Cfg 'idlemk_front' 'idlemk_front_v1.png' 16 4 -1)
-$sheets += (Cfg 'idlemk_back' 'idlemk_back_v1.png' 16 4 -1)
+$sheets += (Cfg 'idlemk_back' 'idlemk_back_v2.png' 16 4 -1)
