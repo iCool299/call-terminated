@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611271610';
-import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611271610';
+import { CONFIG } from './config.js?v=202611271630';
+import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611271630';
 
 const C = CONFIG.zee;
 // Front and back sheets are drawn as seen by the camera, so they are never mirrored (her badge and hand stay on the correct side).
@@ -20,7 +20,8 @@ const TRAIL_LAGS = [2, 4, 6];            // history samples (60 per second) used
 const TRAIL_ALPHA = [0.2, 0.11, 0.05];
 const SMEAR_TIME = 0.07;                 // seconds the previous frame lingers as a smear on swings / rolls
 const SMEAR_STATES = new Set(['attack', 'dodge']);
-const XFADE_TIME = 0.09;                 // switching animation: the last pose fades out under the new one, so the change never pops
+const SIDE_ONLY = new Set(['hurt', 'down', 'getup', 'held', 'thrown', 'interact', 'victory', 'defeat']);
+const XFADE_TIME = 0.12;                 // switching animation: the last pose fades out under the new one, so the change never pops
 
 export class Zee {
   constructor(character, x, y) {
@@ -114,7 +115,13 @@ export class Zee {
   get move() { return this.animName.replace(/_(front|back)$/, ''); }
 
   // turn toward a held direction: mostly up = back, mostly down = front, a real sideways push = side (no input keeps the current one)
-  _turn(a) { if (Math.abs(a.y) > 0.2 && Math.abs(a.y) > Math.abs(a.x) * 1.4) this.view = a.y > 0 ? 'front' : 'back'; else if (Math.abs(a.x) > 0.2) this.view = 'side'; }
+  // hysteresis: turning to front / back needs a clearly vertical push, turning back to the side a clearly sideways one, so a diagonal never flickers
+  _turn(a) {
+    const ax = Math.abs(a.x), ay = Math.abs(a.y);
+    if (this.view === 'side') { if (ay > 0.2 && ay > ax * 1.4) this.view = a.y > 0 ? 'front' : 'back'; }
+    else if (ax > 0.2 && ax > ay * 1.0) this.view = 'side';
+    else if (ay > 0.2) this.view = a.y > 0 ? 'front' : 'back';
+  }
 
   _play(name) {
     if (this.anim && name !== this.animName) this.xfade = { anim: this.anim, frame: this.frame, t: 0 };     // blend out of the previous animation
@@ -193,6 +200,7 @@ export class Zee {
 
   // ---------- state transitions ----------
   _enter(state, anim) {
+    if (SIDE_ONLY.has(state)) this.view = 'side';      // these moves only exist side-on: the idle after them matches
     this.state = state; this.phase = ''; this.queued = false; this.idleTime = 0;
     if (state !== 'down' && state !== 'getup' && state !== 'defeat') this.prone = false;
     if (state === 'attack') this.attackId++;
@@ -243,7 +251,7 @@ export class Zee {
       this.y += a.y * speed * C.depthSpeedFactor * dt;
       if (Math.abs(a.x) > 0.05) this.face = a.x > 0 ? 1 : -1;
       // mostly up the screen = facing away, mostly down = facing the camera, any real sideways push = side view; kept when she stops
-      if (Math.abs(a.y) > Math.abs(a.x) * 1.4) this.view = a.y > 0 ? 'front' : 'back'; else if (Math.abs(a.x) > 0.05) this.view = 'side';
+      this._turn(a);
       const want = running ? 'run' : 'walk', clip = this._dir(want);
       if (this.state !== want || this.animName !== clip) { this.state = want; this._play(clip); }
       this.idleTime = 0;
