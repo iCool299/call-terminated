@@ -3,9 +3,9 @@
 # and matching her BODY length (face-to-feet, allowing for the pose: a run is lower than a stand). The generator drew some sheets with a
 # bigger head for the body, so matching only one of them made her shrink or grow; halfway keeps both changes small and smooth.
 $sheets = @(
-    (Cfg 'idlemk'      'idlemk_side_v1.png' 16 4 -1),     # row 1 = idle breathing loop, rows 2-4 = makeup; ONE drawing so both are the same size and look
-    (Cfg 'walk'        'walk_v5.png'        12 3 328),
-    (Cfg 'run'         'run_v5.png'         12 3 382),
+    (Cfg 'idlemk'      'idlemk_side_v2.png' 16 4 -1),     # row 1 = idle breathing loop, rows 2-4 = makeup; ONE drawing so both are the same size and look
+    (Cfg 'walk'        'walk_v5.png'        12 3 293),
+    (Cfg 'run'         'run_v5.png'         12 3 318),
     (Cfg 'jump'        'jump_v4.png'        12 3 327),
     (Cfg 'punch_1'     'punch_1_v4.png'     10 2 359),
     (Cfg 'punch_2'     'punch_2_v4.png'     10 2 350),
@@ -40,5 +40,5 @@ $sheets += (Cfg 'punch_3_back' 'punch_3_back_v2.png' 12 3 ([double]$views.'punch
 $sheets += (Cfg 'jump_kick_back' 'jump_kick_back_v1.png' 8 2 ([double]$views.'jump_kick_back'))
 $sheets += (Cfg 'dodge_back' 'dodge_back_v1.png' 12 3 ([double]$views.'dodge_back'))
 
-$sheets += (Cfg 'idlemk_front' 'idlemk_front_v1.png' 16 4 -1)
-$sheets += (Cfg 'idlemk_back' 'idlemk_back_v2.png' 16 4 -1)
+$sheets += (Cfg 'idlemk_front' 'idlemk_front_v2.png' 16 4 -1)
+$sheets += (Cfg 'idlemk_back' 'idlemk_back_v3.png' 16 4 -1)
