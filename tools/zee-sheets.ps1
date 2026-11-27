@@ -1,23 +1,23 @@
 ﻿# v2 (more frames) sheets. Cfg name file frames rows standH.
-# StandH = Zee's standing height in source pixels for that sheet. It is now MEASURED, not eyeballed: the size of her face (a pose-independent
-# feature) in every frame of every sheet, relative to the idle, gave one correction per sheet (the generator drew some sheets 5-17% too big), so
-# her head and body are the same size in every animation. knockdown drifts inside the sheet, so it also has a per-frame multiplier (FrameMul).
+# StandH = Zee's standing height in source pixels for that sheet. Measured, not eyeballed: each sheet is scaled halfway between matching her HEAD size
+# and matching her BODY length (face-to-feet, allowing for the pose: a run is lower than a stand). The generator drew some sheets with a
+# bigger head for the body, so matching only one of them made her shrink or grow; halfway keeps both changes small and smooth.
 $sheets = @(
     (Cfg 'idle'        'idle_v4.png'        12 3 323),
-    (Cfg 'idle_makeup' 'idle_makeup_v4.png' 16 4 291),
-    (Cfg 'walk'        'walk_v4.png'        12 3 318),
-    (Cfg 'run'         'run_v4.png'         12 3 380),
+    (Cfg 'idle_makeup' 'idle_makeup_v4.png' 16 4 282),
+    (Cfg 'walk'        'walk_v4.png'        12 3 311),
+    (Cfg 'run'         'run_v4.png'         12 3 347),
     (Cfg 'jump'        'jump_v4.png'        12 3 327),
-    (Cfg 'punch_1'     'punch_1_v4.png'     10 2 364),
+    (Cfg 'punch_1'     'punch_1_v4.png'     10 2 359),
     (Cfg 'punch_2'     'punch_2_v4.png'     10 2 350),
     (Cfg 'punch_3'     'punch_3_v4.png'     12 3 349),
     (Cfg 'jump_kick'   'jump_kick_v4.png'    8 2 402),
     (Cfg 'dodge'       'dodge_v4.png'       12 3 338),
-    (Cfg 'special'     'special_v4.png'     16 4 314),
-    (Cfg 'hurt'        'hurt_v4.png'         6 2 532),
+    (Cfg 'special'     'special_v4.png'     16 4 290),
+    (Cfg 'hurt'        'hurt_v4.png'         6 2 514),
     (Cfg 'knockdown'   'knockdown_v4.png'   12 3 323),
-    (Cfg 'get_up'      'get_up_v4.png'      12 3 367),
-    (Cfg 'victory'     'victory_v4.png'     12 3 326),
+    (Cfg 'get_up'      'get_up_v4.png'      12 3 340),
+    (Cfg 'victory'     'victory_v4.png'     12 3 320),
     (Cfg 'interact'    'interact_v4.png'     8 2 386),
     (Cfg 'prone'       'prone_v4.png'       16 4 -1)    # frame 1 = neutral standing (scale only); 2-6 flight face-down, 7-8 belly flop, 9-10 lying, 11-16 get up from the floor
 )

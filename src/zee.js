@@ -1,7 +1,7 @@
 // Zee: the player character. A small state machine driven by input actions.
 // Movement, combat timing, and animation selection live here; art comes from the manifest (assets.js).
-import { CONFIG } from './config.js?v=202611252303';
-import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611252303';
+import { CONFIG } from './config.js?v=202611271342';
+import { frameAt, drawAnim, drawShadow, LOOK } from './assets.js?v=202611271342';
 
 const C = CONFIG.zee;
 const FREE = new Set(['idle', 'walk', 'run', 'makeup']);
@@ -18,6 +18,7 @@ const TRAIL_LAGS = [2, 4, 6];            // history samples (60 per second) used
 const TRAIL_ALPHA = [0.2, 0.11, 0.05];
 const SMEAR_TIME = 0.07;                 // seconds the previous frame lingers as a smear on swings / rolls
 const SMEAR_STATES = new Set(['attack', 'dodge']);
+const XFADE_TIME = 0.09;                 // switching animation: the last pose fades out under the new one, so the change never pops
 
 export class Zee {
   constructor(character, x, y) {
@@ -101,7 +102,10 @@ export class Zee {
   }
 
   // ---------- animation helpers ----------
-  _play(name) { this.anim = this.anims[name]; this.animName = name; this.t = 0; }
+  _play(name) {
+    if (this.anim && name !== this.animName) this.xfade = { anim: this.anim, frame: this.frame, t: 0 };     // blend out of the previous animation
+    this.anim = this.anims[name]; this.animName = name; this.t = 0;
+  }
   get frame() { return frameAt(this.anim, this.t); }
   get done() { return this.t >= this.anim.duration; }
   get cooldowns() { return { special: C.specialCooldown, dodge: C.dodgeCooldown }; }
@@ -170,6 +174,7 @@ export class Zee {
     const key = this.animName + ':' + this.frame;
     if (key !== this._key) { if (this._ka) this.smear = { anim: this._ka, frame: this._kf, t: 0 }; this._key = key; this._ka = this.anim; this._kf = this.frame; }
     if (this.smear) this.smear.t += dt;
+    if (this.xfade) { this.xfade.t += dt; if (this.xfade.t > XFADE_TIME) this.xfade = null; }
   }
 
   // ---------- state transitions ----------
@@ -365,6 +370,9 @@ export class Zee {
       }
     }
     // swing / roll smear: the previous frame lingers for a moment, which blurs fast poses together
+    // animation switch: the previous pose dissolves under the new one for a moment (no pop in size or position)
+    const xf = this.xfade;
+    if (xf && !['held', 'thrown'].includes(this.state)) drawAnim(ctx, this.character, xf.anim, xf.frame, x, y - lift, this.face, 0.55 * (1 - xf.t / XFADE_TIME));
     const s = this.smear;
     if (s && s.t < SMEAR_TIME && (SMEAR_STATES.has(this.state) || this.animName === 'jump_kick')) {
       drawAnim(ctx, this.character, s.anim, s.frame, x, y - lift, this.face, 0.32 * (1 - s.t / SMEAR_TIME));
