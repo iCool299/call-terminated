@@ -47,7 +47,27 @@
                              "file":  "navy_f.png",
                              "frames":  12,
                              "cols":  8
-                         }
+                         },
+                   "idle_front":  {
+                                      "file":  "navy_idle_front.png",
+                                      "frames":  8,
+                                      "cols":  8
+                                  },
+                   "idle_back":  {
+                                     "file":  "navy_idle_back.png",
+                                     "frames":  8,
+                                     "cols":  8
+                                 },
+                   "walk_front":  {
+                                      "file":  "navy_walk_front.png",
+                                      "frames":  8,
+                                      "cols":  8
+                                  },
+                   "walk_back":  {
+                                     "file":  "navy_walk_back.png",
+                                     "frames":  6,
+                                     "cols":  6
+                                 }
                },
     "animations":  {
                        "idle":  {
@@ -114,6 +134,34 @@
                                       "fps":  10,
                                       "loop":  false
                                   },
+                       "idle_front":  {
+                                          "strip":  "idle_front",
+                                          "from":  0,
+                                          "to":  7,
+                                          "fps":  8,
+                                          "loop":  true
+                                      },
+                       "walk_front":  {
+                                          "strip":  "walk_front",
+                                          "from":  0,
+                                          "to":  7,
+                                          "fps":  10,
+                                          "loop":  true
+                                      },
+                       "idle_back":  {
+                                         "strip":  "idle_back",
+                                         "from":  0,
+                                         "to":  7,
+                                         "fps":  8,
+                                         "loop":  true
+                                     },
+                       "walk_back":  {
+                                         "strip":  "walk_back",
+                                         "from":  0,
+                                         "to":  5,
+                                         "fps":  8,
+                                         "loop":  true
+                                     },
                        "flex":  {
                                     "strip":  "f",
                                     "from":  0,

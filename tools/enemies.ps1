@@ -24,6 +24,11 @@ function Get-EnemySheets($grab, $wRows = 3, $flex = $false) {
     # dedicated walk cycle: 12 frames = two identical half-steps with the legs swapped (a perfect loop). No standing frame, so scale = median frame height.
     $s += @{ name = 'w'; n = 12; rows = $wRows; median = $true }     # (wRows: how many rows the generated sheet actually has, 3 normally)
     if ($flex) { $s += @{ name = 'f'; n = 12; rows = 3 } }           # navy only: biceps-flex idle loop (frame 1 = neutral standing)
+    # front / back views (built only when the raw sheet exists): idle frame 1 = standing (calibrates scale); walks scale by median height
+    $s += @{ name = 'idle_front'; n = 8; rows = 2 }
+    $s += @{ name = 'idle_back';  n = 8; rows = 2 }
+    $s += @{ name = 'walk_front'; n = 8; rows = 2; median = $true }
+    $s += @{ name = 'walk_back';  n = 6; rows = 2; median = $true }
     return $s
 }
 
@@ -40,6 +45,10 @@ function Get-EnemyAnims($grab, $hasW = $false, $hasF = $false) {
         @{ name = 'get_up';    strip = 'c'; from = 10; to = 15; fps = 12; loop = $false },
         @{ name = 'defeat';    strip = 'd'; from = 0;  to = 7;  fps = 10; loop = $false }
     )
+    foreach ($v in 'front', 'back') {
+        $a += @{ name = "idle_$v"; strip = "idle_$v"; from = 0; to = 7; fps = 8; loop = $true }
+        $a += @{ name = "walk_$v"; strip = "walk_$v"; from = 0; to = $(if ($v -eq 'front') { 7 } else { 5 }); fps = $(if ($v -eq 'front') { 10 } else { 8 }); loop = $true }
+    }
     if ($hasF) { $a += @{ name = 'flex'; strip = 'f'; from = 0; to = 11; fps = 9; loop = $false } }   # navy: shown now and then while standing (enemy.js)
     if ($grab) {
         # sheet g frame numbers (1-based): 1 neutral | 2 coil, 3 lunge, 4 CLAMP, 5-6 hoist, 7 overhead | 7-9 hold (ping-pong loop) | 10-11 wind-up, 12 heave, 13 RELEASE, 14-16 recover
