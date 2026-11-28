@@ -43,6 +43,18 @@ if ($e.grab) {
     $g = [Drawing.Graphics]::FromImage($both); $g.Clear([Drawing.Color]::FromArgb(0, 255, 0)); $g.DrawImage($a, 0, 0, $a.Width, $a.Height); $g.DrawImage($z, $a.Width, 0, $z.Width, $z.Height); $g.Dispose()
     $masterPath = Join-Path $root "tools\debug\palette-master-$Id.png"; $both.Save($masterPath); $a.Dispose(); $z.Dispose(); $both.Dispose(); $palN = 46
 }
+if ($e.v2) {
+    # v2: the palette is taken from his own drawings (model sheet + idle + walk sheets, + Zee for grabbers) with many more colours,
+    # so the suit, skin and shading keep their real tones instead of snapping to a few shared shades
+    Add-Type -AssemblyName System.Drawing
+    $parts = @((Join-Path $root $e.master), (Join-Path $root "sprites\agents\raw\${Id}_idle.png"), (Join-Path $root "sprites\agents\raw\${Id}_walk.png"))
+    if ($e.grab) { $parts += (Join-Path $root 'sprites\zee\master\zee_master_idle_v2.png') }
+    $imgs = @($parts | Where-Object { Test-Path $_ } | ForEach-Object { [Drawing.Bitmap]::FromFile($_) })
+    $W = 0; $H = 0; foreach ($im in $imgs) { $W += $im.Width; $H = [Math]::Max($H, $im.Height) }
+    $all = New-Object Drawing.Bitmap $W, $H; $g = [Drawing.Graphics]::FromImage($all); $g.Clear([Drawing.Color]::FromArgb(0, 255, 0)); $x = 0
+    foreach ($im in $imgs) { $g.DrawImage($im, $x, 0, $im.Width, $im.Height); $x += $im.Width; $im.Dispose() }
+    $g.Dispose(); $masterPath = Join-Path $root "tools\debug\palette-master-$Id.png"; $all.Save($masterPath); $all.Dispose(); $palN = 128
+}
 $log = [Zee2.Pipe]::Run($root, $masterPath, $out, '', $sheets, $palN, @())
 $log | Out-File (Join-Path $dbg "enemy-$Id.log") -Encoding utf8
 
@@ -72,3 +84,4 @@ if ($have -contains 'w') { & (Join-Path $PSScriptRoot 'order-walk.ps1') -Id $Id 
 foreach ($an in 'walk', 'idle') { & (Join-Path $PSScriptRoot 'lock-head.ps1') -Id $Id -Anim $an | Out-Null }            # smoothest walk loop (always run after a build)
 Write-Host "built $Id :$($sheets.Count) strips, $($anims.Count) animations (cell ${cw}x${ch}) -> $out"
 
+if ($e.v2) { & (Join-Path $PSScriptRoot 'match-colors.ps1') -Id $Id }    # every animation in the idle's colours (no colour jump between moves)

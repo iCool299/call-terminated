@@ -1,7 +1,7 @@
 {
     "character":  "navy",
     "grab":  true,
-    "gameHeight":  152,
+    "gameHeight":  1312,
     "cell":  {
                  "w":  480,
                  "h":  448
