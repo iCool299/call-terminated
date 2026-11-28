@@ -89,3 +89,4 @@ if ($e.v2) {      # every animation in the idle's colours, so nothing changes co
     & (Join-Path $PSScriptRoot "match-hue.ps1") -Id $Id | Out-Null                               # per hue group: overall brightness / saturation
     1..2 | ForEach-Object { & (Join-Path $PSScriptRoot "match-colors.ps1") -Id $Id | Out-Null }   # per colour region (last): catches hue shifts (a garment drawn a different shade)
 }
+if ($e.v2) { & (Join-Path $PSScriptRoot 'stabilize-x.ps1') -Id $Id }    # walk / run frames lined up on the head (no sideways judder)
