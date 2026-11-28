@@ -1,14 +1,14 @@
 // Game shell: loads Zee, runs the loop, draws the placeholder office + HUD, wires pause / touch UI.
-import { CONFIG } from './config.js?v=202611280215';
-import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611280215';
-import { Input } from './input.js?v=202611280215';
-import { Zee } from './zee.js?v=202611280215';
-import { Game } from './game.js?v=202611280215';
-import { ENEMY_IDS } from './enemy.js?v=202611280215';
-import { drawHud as drawArcadeHud } from './hud.js?v=202611280215';
-import { Level, qualityDepartment } from './level.js?v=202611280215';
-import { Camera } from './camera.js?v=202611280215';
-import { unlock } from './sfx.js?v=202611280215';
+import { CONFIG } from './config.js?v=202611281716';
+import { loadCharacter, VERSION, LOOK, setLight } from './assets.js?v=202611281716';
+import { Input } from './input.js?v=202611281716';
+import { Zee } from './zee.js?v=202611281716';
+import { Game } from './game.js?v=202611281716';
+import { ENEMY_IDS } from './enemy.js?v=202611281716';
+import { drawHud as drawArcadeHud } from './hud.js?v=202611281716';
+import { Level, qualityDepartment } from './level.js?v=202611281716';
+import { Camera } from './camera.js?v=202611281716';
+import { unlock } from './sfx.js?v=202611281716';
 
 const { w: W, h: H } = CONFIG.view;
 const canvas = document.getElementById('game');

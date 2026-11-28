@@ -2,7 +2,7 @@
 # Raw ChatGPT sheets live in sprites/agents/raw/<id>_<sheet>.png ; build with: tools\build-enemy.ps1 -Id navy
 $enemies = [ordered]@{
     navy    = @{ master = 'sprites\agents\good_male_brown\navy_model_v2.png';                 H = 152; grab = $true; flex = $true; cell = @(480, 448); v2 = $true }   # tall muscular suit man
-    polo    = @{ master = 'sprites\agents\good_male_white\good_male_white_master_v2.png';     H = 112; grab = $false }   # short round polo man
+    polo    = @{ master = 'sprites\agents\good_male_white\polo_model_v2.png';                H = 112; grab = $false; v2 = $true; frames = @{ walk_front = 6; run_front = 6 } }   # short round polo man
     plum    = @{ master = 'sprites\agents\good_female_hijab\good_female_hijab_master_v2.png'; H = 128; grab = $false }   # plum suit, turban hijab
     cream   = @{ master = 'sprites\agents\good_female_nohijab\good_female_nohijab_master_v4.png'; H = 150; grab = $false } # tall slim, black bob, mustard hoodie + jeans
     fighter = @{ master = 'sprites\agents\bad_male_brown\bad_male_brown_master_v2.png';      H = 130; grab = $false }   # street fighter, headband
@@ -57,7 +57,8 @@ function Get-EnemyAnims($grab, $hasW = $false, $hasF = $false) {
 # ---- v2 set (navy first): one sheet per move, every move drawn from the same model sheet, plus front / back idle, walk and run ----
 # Raw sheets: sprites/agents/raw/<id>_<name>.png. Frame 1 of every non-loop sheet = the side fighting idle (calibrates the scale);
 # walk / run sheets have no standing frame, so they scale by their median frame height.
-function Get-EnemySheetsV2($grab, $flex) {
+# $frames: optional per-enemy frame counts for sheets that were trimmed (e.g. @{ run_front = 6 })
+function Get-EnemySheetsV2($grab, $flex, $frames) {
     $s = @(
         @{ name = 'idle';   n = 8;  rows = 2 },                  # fighting stance, breathing loop
         @{ name = 'walk';   n = 8;  rows = 2; median = $true },  # contact, down, passing, up  x2 legs
@@ -68,6 +69,7 @@ function Get-EnemySheetsV2($grab, $flex) {
         @{ name = 'defeat'; n = 8;  rows = 2 }
     )
     if ($grab) { $s += @{ name = 'g'; n = 16; rows = 4; feet = $true; standH = 274 } }   # standH measured in game: grab Zee = real Zee, navy = his idle size (both within 2%)
+    if (-not $grab) { $s += @{ name = 'throw'; n = 8; rows = 2 } }   # non-grabbers throw a call-centre headset instead
     if ($flex) { $s += @{ name = 'flex'; n = 12; rows = 3 } }
     $s += @{ name = 'idle_front'; n = 8; rows = 2 }
     $s += @{ name = 'idle_back';  n = 8; rows = 2 }
@@ -75,9 +77,10 @@ function Get-EnemySheetsV2($grab, $flex) {
     $s += @{ name = 'walk_back';  n = 8; rows = 2; median = $true }
     $s += @{ name = 'run_front';  n = 8; rows = 2; median = $true }
     $s += @{ name = 'run_back';   n = 8; rows = 2; median = $true }
+    if ($frames) { foreach ($x in $s) { if ($frames.ContainsKey($x.name)) { $x.n = $frames[$x.name] } } }
     return $s
 }
-function Get-EnemyAnimsV2($grab, $have) {
+function Get-EnemyAnimsV2($grab, $have, $counts) {
     $a = @(
         @{ name = 'idle';      strip = 'idle';   from = 0;  to = 7;  fps = 8;  loop = $true },
         @{ name = 'walk';      strip = 'walk';   from = 0;  to = 7;  fps = 10; loop = $true },   # (walk / run are driven by distance in enemy.js)
@@ -101,7 +104,9 @@ function Get-EnemyAnimsV2($grab, $have) {
         $a += @{ name = 'hold';  strip = 'g'; from = 6; to = 8;  fps = 9;  loop = $true; pingpong = $true }
         $a += @{ name = 'throw'; strip = 'g'; from = 9; to = 15; fps = 11; loop = $false; release = @(3) }
     } else {
-        $a += @{ name = 'throw_headset'; strip = 'throw'; from = 0; to = 7; fps = 18; loop = $false; release = @(3, 4) }
+        $a += @{ name = 'throw_headset'; strip = 'throw'; from = 0; to = 7; fps = 18; loop = $false; release = @(4) }   # frame 5 of the sheet: the headset leaves his hand
     }
+    # loops use every frame their sheet has (some sheets are trimmed to 6 frames)
+    foreach ($x in $a) { if ($x.loop -and -not $x.pingpong -and $counts.ContainsKey($x.strip)) { $x.to = $counts[$x.strip] - 1 } }
     return @($a | Where-Object { $have -contains $_.strip })
 }
